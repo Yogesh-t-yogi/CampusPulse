@@ -68,4 +68,8 @@ public class Unit {
     public void setTopics(List<Topic> topics) {
         this.topics = topics;
     }
+    public void addTopic(Topic topic) {
+        topics.add(topic);
+        topic.setUnit(this);
+    }
 }

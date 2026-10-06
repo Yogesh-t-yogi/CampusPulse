@@ -20,6 +20,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/syllabus").permitAll()
                 .requestMatchers("/api/syllabus/**").permitAll()
+                .requestMatchers("/api/ai/**").permitAll()
                 .anyRequest().authenticated()
             );
 

@@ -67,4 +67,8 @@ public class Subject {
     public void setUnits(List<Unit> units) {
         this.units = units;
     }
+    public void addUnit(Unit unit) {
+        units.add(unit);
+        unit.setSubject(this);
+    }
 }

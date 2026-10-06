@@ -20,7 +20,10 @@ public class Syllabus {
     @Column(name = "file_name")
     private String fileName;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "extracted_text", columnDefinition = "TEXT")
+    private String extractedText;
+
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private LocalDateTime createdAt;
 
     @OneToMany(
@@ -58,6 +61,14 @@ public class Syllabus {
         this.fileName = fileName;
     }
 
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -68,5 +79,10 @@ public class Syllabus {
 
     public void setSubjects(List<Subject> subjects) {
         this.subjects = subjects;
+    }
+
+    public void addSubject(Subject subject) {
+        subjects.add(subject);
+        subject.setSyllabus(this);
     }
 }
