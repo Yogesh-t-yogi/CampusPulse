@@ -12,21 +12,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
-        http
-            .csrf(csrf -> csrf.disable())
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable())
-            .authorizeHttpRequests(auth -> auth
+       http
+        .csrf(csrf -> csrf.disable())
+        .cors(cors -> {})
+        .formLogin(form -> form.disable())
+        .httpBasic(basic -> basic.disable())
+        .logout(logout -> logout.disable())
+        .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/health").permitAll()
-            .requestMatchers("/api/syllabus").permitAll()
             .requestMatchers("/api/syllabus/**").permitAll()
             .requestMatchers("/api/ai/**").permitAll()
             .requestMatchers("/api/jobs/**").permitAll()
             .requestMatchers("/api/matching/**").permitAll()
             .requestMatchers("/api/embeddings/**").permitAll()
+            .requestMatchers("/api/recommendations/**").permitAll()
             .anyRequest().authenticated()
         );
-
         return http.build();
     }
 }
