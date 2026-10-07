@@ -17,12 +17,15 @@ public class SecurityConfig {
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/health").permitAll()
-                .requestMatchers("/api/syllabus").permitAll()
-                .requestMatchers("/api/syllabus/**").permitAll()
-                .requestMatchers("/api/ai/**").permitAll()
-                .anyRequest().authenticated()
-            );
+            .requestMatchers("/api/health").permitAll()
+            .requestMatchers("/api/syllabus").permitAll()
+            .requestMatchers("/api/syllabus/**").permitAll()
+            .requestMatchers("/api/ai/**").permitAll()
+            .requestMatchers("/api/jobs/**").permitAll()
+            .requestMatchers("/api/matching/**").permitAll()
+            .requestMatchers("/api/embeddings/**").permitAll()
+            .anyRequest().authenticated()
+        );
 
         return http.build();
     }

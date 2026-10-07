@@ -97,3 +97,15 @@ logs/
 # ==============================
 
 docker-data/
+
+
+# Python virtual environment
+ai-service/venv/
+ai-service/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Python environment files
+ai-service/.env
