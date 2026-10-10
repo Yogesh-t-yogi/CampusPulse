@@ -21,9 +21,18 @@ function Curriculum() {
 
     try {
 
+      
+      const token = sessionStorage.getItem("campuspulse_token");
+
       const response = await axios.get(
-        "http://localhost:8081/api/syllabus/4/full"
+        "http://localhost:8081/api/syllabus/4/full",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
+
 
       setSyllabus(response.data);
 
