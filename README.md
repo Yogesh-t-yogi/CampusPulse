@@ -1,399 +1,251 @@
-# 🚀 CampusPulse
 
-### AI-Driven Curriculum-to-Industry Gap Analyzer
+# CampusPulse — AI-Driven Curriculum-to-Industry Gap Analyzer
 
-CampusPulse is an AI-powered academic analytics platform that analyzes an educational curriculum against current industry job-market requirements to identify **skill gaps**, measure **curriculum-industry alignment**, and generate **AI-driven recommendations** for curriculum improvement.
+CampusPulse is a web application that analyzes academic curricula against industry job requirements. It uses semantic embeddings and AI-assisted recommendations to identify matched skills, partial matches, and curriculum gaps.
 
----
+## Technology Stack
 
-## 🎯 Problem Statement
-
-Academic curricula may not always evolve at the same pace as industry requirements.
-
-There can be a gap between:
-
-- What students learn in their academic curriculum
-- What skills companies currently demand
-- Emerging technologies expected from graduates
-
-CampusPulse aims to identify these gaps automatically using **Natural Language Processing, embeddings, semantic similarity, job-market data and Large Language Models (LLMs).**
-
----
-
-## 💡 Proposed Solution
-
-CampusPulse follows this workflow:
-
-```text
-Academic Syllabus
-       ↓
-Text Extraction
-       ↓
-AI-Based Syllabus Structuring
-       ↓
-Curriculum Skills
-       ↓
-                    ← Job Market Data
-                           ↓
-                    Required Skills
-                           ↓
-                    Skill Embeddings
-                           ↓
-                Semantic Skill Matching
-                           ↓
-                    Gap Detection
-                           ↓
-                     AI Analysis
-                           ↓
-              AI Recommendations
-                           ↓
-                  Visual Dashboard
-```
-
----
-
-## 🏗️ System Architecture
-
-```text
-┌──────────────────────────────────────┐
-│           React Frontend             │
-│                                      │
-│ Dashboard | Charts | Reports         │
-└──────────────────┬───────────────────┘
-                   │
-                  REST
-                   │
-┌──────────────────▼───────────────────┐
-│        Spring Boot Backend           │
-│                                      │
-│ Authentication                       │
-│ Syllabus Module                      │
-│ Job Market Module                    │
-│ Embedding Module                     │
-│ Skill Matching                       │
-│ Gap Detection                        │
-│ AI Analysis                          │
-│ Recommendation Engine                │
-│ Report Generation                    │
-└───────────────┬───────────┬──────────┘
-                │           │
-                ▼           ▼
-       ┌─────────────┐  ┌─────────────┐
-       │ PostgreSQL  │  │   LLM API   │
-       │ + pgvector  │  │ Embeddings  │
-       └─────────────┘  └─────────────┘
-```
-
----
-
-## 🛠️ Technology Stack
-
-### Backend
-
-- Java
-- Spring Boot
-- Spring Web
-- Spring Data JPA
-- Hibernate
-- Spring Security
-- JWT
-- Spring WebClient
-- Maven
-
-### Database
-
-- PostgreSQL
-- pgvector
-
-### AI
-
-- Large Language Model API
-- Embedding API
-- Semantic Similarity
-- AI-based Gap Analysis
-- AI Recommendation Engine
-
-### Frontend
-
-- React
-- JavaScript
-- Axios
-- Tailwind CSS
-- Recharts
-
-### Document Processing
-
-- Apache PDFBox
-- Apache Tika
-
-### Development & DevOps
-
-- Git
-- GitHub
-- Docker
-- GitHub Actions
-- Swagger / OpenAPI
-
----
-
-## 📦 Core Modules
-
-### 1. Syllabus Ingestion
-
-Upload a syllabus document and extract its content.
-
-```text
-PDF / DOCX
-    ↓
-Text Extraction
-    ↓
-AI Structuring
-    ↓
-Subject → Unit → Topic
-```
-
-### 2. Skill Embedding & Taxonomy
-
-Convert curriculum topics and industry skills into vector embeddings and perform semantic comparison.
-
-### 3. Job Market Intelligence
-
-Collect job postings for selected roles and identify the technical skills required by industry.
-
-### 4. Skill Matching & Gap Detection
-
-Compare curriculum skills with industry requirements and identify:
-
-- Covered skills
-- Partially covered skills
-- Missing skills
-- High-demand skill gaps
-
-### 5. AI Analysis & Recommendations
-
-Use AI to analyze identified gaps and generate actionable curriculum recommendations.
-
-### 6. Analytics Dashboard
-
-Provide visual representations of:
-
-- Curriculum coverage
-- Industry demand
-- Skill gaps
-- Skill priorities
-- AI recommendations
-
-### 7. Authentication & Authorization
-
-Role-based access for:
-
-- ADMIN
-- DEPT_HEAD
-- VIEWER
-
-### 8. Reports
-
-Generate structured curriculum-industry analysis reports.
-
----
-
-## 🗄️ Core Database Design
-
-```text
-syllabus
-   │
-   └── subject
-          │
-          └── unit
-                 │
-                 └── topic
-                        │
-                        └── topic_embedding
-
-job_posting
-   │
-   └── job_required_skill
-
-gap_report
-   │
-   └── gap_item
-
-report
-   │
-   └── report_recommendation
-
-app_user
-```
-
----
-
-## 🔐 Security
-
-CampusPulse uses role-based authentication and authorization.
-
-| Role | Access |
+| Component | Technologies |
 |---|---|
-| ADMIN | Manage users and system operations |
-| DEPT_HEAD | Manage syllabus and view reports |
-| VIEWER | View reports |
+| Frontend | React, Vite, Axios, Recharts |
+| Backend | Java 17, Spring Boot, Maven Wrapper, Spring Security, JWT |
+| Database | PostgreSQL, pgvector |
+| AI embedding service | Python, FastAPI, Sentence Transformers |
+| LLM integration | Groq API |
 
----
-
-## 📊 Example Analysis
-
-For a target role such as:
-
-```text
-Java Spring Boot Developer
-```
-
-CampusPulse may identify industry skills such as:
-
-```text
-Java
-Spring Boot
-REST API
-Docker
-AWS
-Kafka
-CI/CD
-PostgreSQL
-```
-
-The system then compares these requirements against the uploaded curriculum.
-
-Example result:
-
-```text
-Java             → MATCHED
-Spring Boot      → MATCHED
-REST API         → MATCHED
-PostgreSQL       → MATCHED
-Docker           → GAP
-AWS              → GAP
-Kafka             → GAP
-CI/CD            → GAP
-```
-
-The system then prioritizes the gaps according to their industry demand.
-
----
-
-## 📅 Development Roadmap
-
-The project is being developed incrementally.
-
-### Phase 1 — Foundation
-
-- Spring Boot initialization
-- PostgreSQL configuration
-- Database architecture
-- Authentication
-- REST API structure
-
-### Phase 2 — Syllabus Intelligence
-
-- Syllabus upload
-- PDF/DOCX parsing
-- AI syllabus structuring
-- Curriculum database
-
-### Phase 3 — Job Market Intelligence
-
-- Job data integration
-- Job description processing
-- Industry skill extraction
-
-### Phase 4 — Semantic Matching
-
-- Embedding generation
-- pgvector integration
-- Similarity matching
-- Skill taxonomy
-
-### Phase 5 — AI Gap Analysis
-
-- Gap detection
-- Demand-based prioritization
-- AI analysis
-- AI recommendations
-
-### Phase 6 — Dashboard
-
-- React frontend
-- Charts
-- Gap visualization
-- Recommendation interface
-- Report generation
-
-### Phase 7 — Testing & Deployment
-
-- Unit testing
-- Integration testing
-- Docker
-- CI/CD
-- Deployment
-- Documentation
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```text
 CampusPulse/
-│
-├── backend/
-│
-├── frontend/
-│
-├── database/
-│
-├── docs/
-│
-├── docker/
-│
-├── .gitignore
-├── LICENSE
-└── README.md
+├── backend/       # Spring Boot REST API
+├── frontend/      # React application
+├── ai-service/    # Python embedding service
+├── README.md
+└── .gitignore
 ```
 
----
+## Prerequisites
 
-## 🎓 Academic Project
+Install the following on Windows:
 
-**Project:** CampusPulse  
-**Type:** MCA Semester Project  
-**Domain:** Artificial Intelligence / Education Technology / Data Analytics  
-**Architecture:** Modular Monolith  
-**Backend:** Java Spring Boot  
-**Frontend:** React  
-**Database:** PostgreSQL + pgvector
+- Git
+- Java JDK 17
+- Node.js and npm
+- Python 3.12 (64-bit recommended)
+- PostgreSQL 18
+- pgvector compatible with PostgreSQL 18
+- A Groq API key
 
----
+The first build may take several minutes because dependencies and the AI embedding model must be downloaded.
 
-## 👨‍💻 Development Status
+## 1. Clone the Repository
 
-🚧 **Currently Under Development**
+Open PowerShell:
 
-The project is being developed incrementally, starting with the Spring Boot backend and syllabus intelligence module.
+```powershell
+cd "$env:USERPROFILE\Desktop"
+git clone https://github.com/Yogesh-t-yogi/CampusPulse.git
+cd CampusPulse
+```
 
----
+Verify the project folders:
 
-## 📌 Future Scope
+```powershell
+Get-ChildItem
+```
 
-Potential future enhancements include:
+## 2. Configure PostgreSQL
 
-- Multi-university curriculum comparison
-- Automated curriculum evolution tracking
-- Student skill profiling
-- Personalized learning-path generation
-- University-wide analytics
-- Industry partnership insights
-- Microservices-based deployment
-- Advanced AI curriculum planning
+Start PostgreSQL and connect using SQL Shell (psql) or the PostgreSQL command-line client.
 
----
+Create the database:
 
-## 📄 License
+```sql
+CREATE DATABASE campuspulse;
+```
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+Connect to the database:
+
+```sql
+\c campuspulse
+```
+
+Enable pgvector:
+
+```sql
+CREATE EXTENSION vector;
+```
+
+Verify the extension:
+
+```sql
+SELECT extversion FROM pg_extension WHERE extname = 'vector';
+```
+
+If the database already exists, do not create it again. Connect to it and verify that the vector extension is enabled.
+
+**Important:** A Git clone does not copy the database records from another computer. You may need to upload your syllabus and recreate job-market demo data.
+
+## 3. Configure the Python AI Service
+
+Open a separate PowerShell terminal:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\CampusPulse\ai-service"
+
+py -3.12 -m venv venv
+.\venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+If PowerShell blocks virtual-environment activation, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\Activate.ps1
+```
+
+Start the service:
+
+```powershell
+python -m uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+Keep this terminal open.
+
+Verify the service in another terminal or browser:
+
+http://127.0.0.1:8000/health
+
+The embedding service uses `sentence-transformers/all-MiniLM-L6-v2` and generates 384-dimensional embeddings. Its first run downloads the model and requires an internet connection.
+
+## 4. Configure and Start Spring Boot
+
+Open another PowerShell terminal:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\CampusPulse\backend"
+```
+
+Set the required environment variables in this same terminal.
+
+```powershell
+$env:DB_PASSWORD = "YOUR_POSTGRES_PASSWORD"
+$env:GROQ_API_KEY = "YOUR_GROQ_API_KEY"
+```
+
+Generate a secure JWT secret for this local run:
+
+```powershell
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+```
+
+Replace the database password and Groq API key placeholders with your own values. Never commit actual credentials to GitHub.
+
+Start the backend:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Wait until Spring Boot starts successfully on port `8081`.
+
+Verify the health endpoint:
+
+http://localhost:8081/api/health
+
+**JWT note:** The generated JWT secret is temporary. If you restart the backend with a different secret, existing login tokens will no longer be valid. Generate the secret again when starting a new development session and log in again.
+
+## 5. Start the React Frontend
+
+Open another PowerShell terminal:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\CampusPulse\frontend"
+
+npm install
+npm run dev
+```
+
+Open the URL displayed by Vite, normally:
+
+http://localhost:5173
+
+Use the registration page to create a user account, then log in.
+
+## 6. Start-Up Order
+
+Start the components in this order:
+
+1. PostgreSQL database.
+2. Python AI embedding service on port `8000`.
+3. Spring Boot backend on port `8081`.
+4. React frontend on port `5173`.
+
+Keep the Python, backend, and frontend terminals open while using the application.
+
+## 7. Main Features
+
+- **Authentication:** User registration, login, and JWT-protected API access.
+- **Dashboard:** Overview of curriculum-to-industry matching results.
+- **Curriculum:** View syllabus subjects, units, and topics.
+- **Job Market:** Manage job requirements and extract required skills.
+- **Gap Analysis:** Identify matched, partially matched, and missing skills using semantic similarity.
+- **AI Recommendations:** Generate curriculum and learning recommendations.
+
+## 8. Troubleshooting
+
+### Database connection failure
+
+- Confirm PostgreSQL is running.
+- Check the database name, port, username, and password.
+- Ensure `DB_PASSWORD` is set in the terminal running Spring Boot.
+
+### JWT or authentication errors
+
+- Confirm `JWT_SECRET` is set in the backend terminal.
+- Log in again after restarting the backend with a new JWT secret.
+- Check that the frontend sends the access token in the `Authorization: Bearer <token>` header.
+
+### AI service unavailable
+
+- Activate the Python virtual environment.
+- Install `requirements.txt`.
+- Start Uvicorn on port `8000`.
+- Test `http://127.0.0.1:8000/health`.
+
+### Groq API errors
+
+- Verify `GROQ_API_KEY`.
+- Check your Groq account's model availability and rate limits.
+- Confirm the backend's configured model is supported by your account.
+
+### Port already in use
+
+Check which process is using the required port before stopping anything. Do not terminate unfamiliar system or database processes.
+
+### Empty dashboard
+
+A new database may not contain the demo syllabus or job records from your original computer. Upload and process a syllabus, create or populate job data, and generate the required embeddings before testing gap analysis.
+
+## 9. Stop the Application
+
+Press `Ctrl+C` in the frontend, backend, and Python service terminals. PostgreSQL can remain running as a Windows service.
+
+## Security Notes
+
+- Never commit database passwords, Groq API keys, or private credentials.
+- Keep local secrets in environment variables or another secure configuration mechanism.
+- Do not commit virtual environments such as `venv` or `node_modules`.
+- Use a persistent, securely stored JWT secret for a deployed environment.
+- Use HTTPS and appropriate production security settings before deployment.
+
+## Repository
+
+GitHub: https://github.com/Yogesh-t-yogi/CampusPulse
