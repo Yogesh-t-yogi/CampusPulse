@@ -1,3 +1,4 @@
+
 package com.campuspulse.service.embedding;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -6,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class PythonEmbeddingService implements EmbeddingService {
@@ -15,7 +15,8 @@ public class PythonEmbeddingService implements EmbeddingService {
 
     public PythonEmbeddingService(
             WebClient.Builder webClientBuilder,
-            @Value("${embedding.service.url:http://127.0.0.1:8000}") String embeddingServiceUrl) {
+            @Value("${embedding.service.url:http://127.0.0.1:8000}")
+            String embeddingServiceUrl) {
 
         this.webClient = webClientBuilder
                 .baseUrl(embeddingServiceUrl)
@@ -25,8 +26,7 @@ public class PythonEmbeddingService implements EmbeddingService {
     @Override
     public List<Double> generateEmbedding(String text) {
 
-        EmbeddingRequest request =
-                new EmbeddingRequest(text);
+        EmbeddingRequest request = new EmbeddingRequest(text);
 
         EmbeddingResponse response = webClient.post()
                 .uri("/embed")
