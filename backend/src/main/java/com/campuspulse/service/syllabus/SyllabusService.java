@@ -1,3 +1,4 @@
+
 package com.campuspulse.service.syllabus;
 
 import com.campuspulse.dto.syllabus.FullSyllabusResponse;
@@ -7,6 +8,7 @@ import com.campuspulse.entity.syllabus.Unit;
 import com.campuspulse.entity.syllabus.Topic;
 import com.campuspulse.repository.syllabus.SyllabusRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,21 +22,27 @@ public class SyllabusService {
         this.syllabusRepository = syllabusRepository;
     }
 
+    // Create syllabus
     public Syllabus createSyllabus(Syllabus syllabus) {
         return syllabusRepository.save(syllabus);
     }
 
-    public List<Syllabus> getAllSyllabi() {
-        return syllabusRepository.findAll();
+    // Get syllabi belonging to a particular user
+    public List<Syllabus> getAllSyllabi(Long userId) {
+        return syllabusRepository.findAllByOwner_Id(userId);
     }
 
-    public Optional<Syllabus> getSyllabusById(Long id) {
-        return syllabusRepository.findById(id);
+    // Get a syllabus only if it belongs to the user
+    public Optional<Syllabus> getSyllabusById(Long id, Long userId) {
+        return syllabusRepository.findByIdAndOwner_Id(id, userId);
     }
 
-    public Optional<FullSyllabusResponse> getFullSyllabusById(Long id) {
+    // Get the complete syllabus hierarchy for its owner
+    @Transactional(readOnly = true)
+    public Optional<FullSyllabusResponse> getFullSyllabusById(
+            Long id, Long userId) {
 
-        return syllabusRepository.findById(id)
+        return syllabusRepository.findByIdAndOwner_Id(id, userId)
                 .map(syllabus -> {
 
                     FullSyllabusResponse response =

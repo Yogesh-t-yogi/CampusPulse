@@ -2,139 +2,298 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-function AIRecommendations() {
+const API_BASE_URL = "http://localhost:8081";
+
+function AIRecommendations({ syllabusId }) {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // =========================================
-  // JWT AUTHENTICATION CONFIG
-  // =========================================
-
-  const getAuthConfig = () => ({
-    headers: {
-      Authorization: `Bearer ${sessionStorage.getItem(
-        "campuspulse_token"
-      )}`,
-    },
-  });
-
-  // =========================================
-  // LOAD RECOMMENDATIONS WHEN PAGE OPENS
-  // =========================================
-
   useEffect(() => {
-    fetchRecommendations();
-  }, []);
+    let cancelled = false;
 
-  // =========================================
-  // FETCH AI RECOMMENDATIONS
-  // =========================================
+    async function fetchRecommendations() {
+      setRecommendations([]);
+      setError("");
 
-  const fetchRecommendations = async () => {
-    try {
-      const response = await axios.get(
-        "http://localhost:8081/api/recommendations/jobs/1/syllabus/4",
-        getAuthConfig()
-      );
+      if (!syllabusId) {
+        setError("Please select a syllabus to view recommendations.");
+        setLoading(false);
+        return;
+      }
 
-      setRecommendations(response.data);
-    } catch (error) {
-      console.error("Failed to load AI recommendations:", {
-        status: error.response?.status,
-        response: error.response?.data,
-      });
+      const token = sessionStorage.getItem("campuspulse_token");
 
-      setError("Failed to load AI recommendations.");
-    } finally {
-      setLoading(false);
+      if (!token) {
+        setError("Your login session is missing. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/api/recommendations/jobs/1/syllabus/${syllabusId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (cancelled) return;
+
+        if (!Array.isArray(response.data)) {
+          throw new Error("INVALID_RESPONSE");
+        }
+
+        setRecommendations(response.data);
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error("AI recommendations error:", {
+          status: err.response?.status,
+          url: err.config?.url,
+          message: err.message,
+        });
+
+        if (err.message === "INVALID_RESPONSE") {
+          setError("The server returned an unexpected recommendations format.");
+        } else if (err.response?.status === 401) {
+          setError("Your session has expired. Please log in again.");
+        } else if (err.response?.status === 403) {
+          setError("Access denied. Check your account permissions and syllabus.");
+        } else if (err.response?.status === 404) {
+          setError("No recommendations were found for this syllabus and job.");
+        } else if (!err.response) {
+          setError("Cannot connect to the backend on port 8081.");
+        } else {
+          setError("Failed to load AI recommendations. Please try again.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+
+    fetchRecommendations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [syllabusId]);
+
+  const getPriority = (priority) => {
+    const value = String(priority || "MEDIUM").toUpperCase();
+
+    if (value === "HIGH" || value === "MEDIUM" || value === "LOW") {
+      return value;
+    }
+
+    return "MEDIUM";
   };
 
-  // =========================================
-  // LOADING STATE
-  // =========================================
+  const getStatus = (status) => {
+    const value = String(status || "REVIEW").toUpperCase();
+
+    if (value === "MATCHED" || value === "PARTIAL" || value === "GAP") {
+      return value;
+    }
+
+    return "REVIEW";
+  };
 
   if (loading) {
     return (
-      <div className="page-content">
-        <h1>AI Recommendations</h1>
-        <p>Generating AI recommendations...</p>
-      </div>
+      <main className="page-content cp-recs">
+        <div className="cr-state">
+          <div className="cr-spinner" />
+          <h2>Preparing AI recommendations</h2>
+          <p>Reviewing skill alignment and identifying next steps...</p>
+        </div>
+      </main>
     );
   }
-
-  // =========================================
-  // ERROR STATE
-  // =========================================
 
   if (error) {
     return (
-      <div className="page-content">
-        <h1>AI Recommendations</h1>
-        <p className="error-message">{error}</p>
-      </div>
+      <main className="page-content cp-recs">
+        <div className="cr-state cr-state-card">
+          <span className="cr-state-icon">!</span>
+          <h1>AI Recommendations</h1>
+          <p role="alert">{error}</p>
+          <button
+            type="button"
+            className="cr-primary-button"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
+      </main>
     );
   }
 
-  // =========================================
-  // MAIN PAGE
-  // =========================================
+  const highPriorityCount = recommendations.filter(
+    (item) => getPriority(item.priority) === "HIGH"
+  ).length;
+
+  const gapCount = recommendations.filter(
+    (item) => getStatus(item.status) === "GAP"
+  ).length;
 
   return (
-    <div className="page-content">
-      <div className="page-header">
-        <h1>AI Recommendations</h1>
+    <main className="page-content cp-recs">
+      <section className="cr-hero">
+        <div>
+          <span className="cr-eyebrow">PERSONALIZED LEARNING · AI INSIGHTS</span>
+          <h1>AI Recommendations</h1>
+          <p>
+            Turn industry skill gaps into practical actions for curriculum
+            improvement and student learning.
+          </p>
+        </div>
 
-        <p>
-          Personalized recommendations generated by AI
-          based on industry skill gaps.
-        </p>
-      </div>
+        <div className="cr-hero-icon" aria-hidden="true">
+          ✦
+        </div>
+      </section>
 
-      <div className="card">
-        <h2>AI-Powered Recommendations</h2>
+      <section className="cr-summary">
+        <article className="cr-summary-card">
+          <span className="cr-summary-icon cr-purple">✦</span>
+          <div>
+            <span>Total recommendations</span>
+            <strong>{recommendations.length}</strong>
+          </div>
+        </article>
+
+        <article className="cr-summary-card">
+          <span className="cr-summary-icon cr-red">!</span>
+          <div>
+            <span>High-priority actions</span>
+            <strong>{highPriorityCount}</strong>
+          </div>
+        </article>
+
+        <article className="cr-summary-card">
+          <span className="cr-summary-icon cr-amber">◎</span>
+          <div>
+            <span>Identified skill gaps</span>
+            <strong>{gapCount}</strong>
+          </div>
+        </article>
+      </section>
+
+      <section className="cr-intro-panel">
+        <div className="cr-intro-icon">✧</div>
+        <div>
+          <span className="cr-eyebrow">YOUR ACTION PLAN</span>
+          <h2>From skill gaps to skill growth</h2>
+          <p>
+            Each recommendation connects an industry skill with curriculum
+            improvement suggestions and practical steps students can take.
+            Prioritize high-priority gaps first.
+          </p>
+        </div>
+      </section>
+
+      <section className="cr-results">
+        <div className="cr-results-header">
+          <div>
+            <span className="cr-eyebrow">RECOMMENDATION REPORT</span>
+            <h2>Recommended actions</h2>
+            <p>AI-generated guidance based on the selected syllabus.</p>
+          </div>
+
+          <span className="cr-count">
+            {recommendations.length} recommendations
+          </span>
+        </div>
 
         {recommendations.length === 0 ? (
-          <p>No recommendations available.</p>
+          <div className="cr-empty">
+            <span>✧</span>
+            <h3>No recommendations available</h3>
+            <p>
+              No recommendations were returned for this syllabus and job.
+            </p>
+          </div>
         ) : (
-          recommendations.map((item, index) => (
-            <div
-              key={item.id ?? index}
-              className="recommendation-card"
-            >
-              <h3>{item.skill}</h3>
+          <div className="cr-list">
+            {recommendations.map((item, index) => {
+              const priority = getPriority(item.priority);
+              const status = getStatus(item.status);
 
-              <p>
-                <strong>Status:</strong> {item.status}
-              </p>
+              return (
+                <article
+                  className="cr-card"
+                  key={item.id ?? `${item.skill}-${index}`}
+                >
+                  <div className="cr-card-header">
+                    <div className="cr-skill-heading">
+                      <span className="cr-number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
 
-              <p>
-                <strong>Priority:</strong> {item.priority}
-              </p>
+                      <div>
+                        <h3>{item.skill || "Skill recommendation"}</h3>
+                        <span className={`cr-status cr-status-${status.toLowerCase()}`}>
+                          {status === "REVIEW" ? "Needs review" : status}
+                        </span>
+                      </div>
+                    </div>
 
-              <p>
-                <strong>AI Analysis:</strong>
-                <br />
-                {item.explanation}
-              </p>
+                    <span className={`cr-priority cr-priority-${priority.toLowerCase()}`}>
+                      {priority} PRIORITY
+                    </span>
+                  </div>
 
-              <p>
-                <strong>Curriculum Recommendation:</strong>
-                <br />
-                {item.curriculumRecommendation}
-              </p>
+                  <div className="cr-card-content">
+                    <section className="cr-detail-block cr-analysis-block">
+                      <div className="cr-detail-title">
+                        <span className="cr-detail-icon">✦</span>
+                        <h4>AI analysis</h4>
+                      </div>
+                      <p>
+                        {item.explanation ||
+                          "No analysis explanation is available."}
+                      </p>
+                    </section>
 
-              <p>
-                <strong>Student Recommendation:</strong>
-                <br />
-                {item.studentRecommendation}
-              </p>
-            </div>
-          ))
+                    <section className="cr-detail-block">
+                      <div className="cr-detail-title">
+                        <span className="cr-detail-icon cr-detail-blue">▤</span>
+                        <h4>Curriculum improvement</h4>
+                      </div>
+                      <p>
+                        {item.curriculumRecommendation ||
+                          "No curriculum recommendation is available."}
+                      </p>
+                    </section>
+
+                    <section className="cr-detail-block">
+                      <div className="cr-detail-title">
+                        <span className="cr-detail-icon cr-detail-green">↗</span>
+                        <h4>Student action plan</h4>
+                      </div>
+                      <p>
+                        {item.studentRecommendation ||
+                          "No student recommendation is available."}
+                      </p>
+                    </section>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
-      </div>
-    </div>
+      </section>
+
+      <footer className="cr-footer">
+        CampusPulse · AI-powered learning recommendations
+      </footer>
+    </main>
   );
 }
 

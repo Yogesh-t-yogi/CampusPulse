@@ -1,7 +1,9 @@
+
 package com.campuspulse.controller.syllabus;
 
 import com.campuspulse.dto.syllabus.FullSyllabusResponse;
 import com.campuspulse.entity.syllabus.Syllabus;
+import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.syllabus.PdfTextExtractionService;
 import com.campuspulse.service.syllabus.SyllabusService;
 
@@ -20,22 +22,24 @@ public class SyllabusController {
 
     private final SyllabusService syllabusService;
     private final PdfTextExtractionService pdfTextExtractionService;
+    private final CurrentUserService currentUserService;
 
     public SyllabusController(
             SyllabusService syllabusService,
-            PdfTextExtractionService pdfTextExtractionService) {
+            PdfTextExtractionService pdfTextExtractionService,
+            CurrentUserService currentUserService) {
 
         this.syllabusService = syllabusService;
         this.pdfTextExtractionService = pdfTextExtractionService;
+        this.currentUserService = currentUserService;
     }
 
-    // =========================================================
     // CREATE SYLLABUS
-    // =========================================================
-
     @PostMapping
     public ResponseEntity<Syllabus> createSyllabus(
             @RequestBody Syllabus syllabus) {
+
+        syllabus.setOwner(currentUserService.getCurrentUser());
 
         Syllabus savedSyllabus =
                 syllabusService.createSyllabus(syllabus);
@@ -43,49 +47,43 @@ public class SyllabusController {
         return ResponseEntity.ok(savedSyllabus);
     }
 
-    // =========================================================
-    // GET ALL SYLLABI
-    // =========================================================
-
+    // GET ALL SYLLABI BELONGING TO THE CURRENT USER
     @GetMapping
     public ResponseEntity<List<Syllabus>> getAllSyllabi() {
 
+        Long userId = currentUserService.getCurrentUser().getId();
+
         return ResponseEntity.ok(
-                syllabusService.getAllSyllabi()
+                syllabusService.getAllSyllabi(userId)
         );
     }
 
-    // =========================================================
-    // GET SYLLABUS BY ID
-    // =========================================================
-
+    // GET SYLLABUS BY ID, ONLY IF OWNED BY CURRENT USER
     @GetMapping("/{id}")
     public ResponseEntity<Syllabus> getSyllabusById(
             @PathVariable Long id) {
 
-        return syllabusService.getSyllabusById(id)
+        Long userId = currentUserService.getCurrentUser().getId();
+
+        return syllabusService.getSyllabusById(id, userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // =========================================================
     // GET COMPLETE SYLLABUS HIERARCHY
-    // =========================================================
+    @GetMapping("/{id}/full")
+    public ResponseEntity<FullSyllabusResponse> getFullSyllabus(
+            @PathVariable Long id) {
 
-        @GetMapping("/{id}/full")
-        public ResponseEntity<FullSyllabusResponse> getFullSyllabus(
-                @PathVariable Long id) {
+        Long userId = currentUserService.getCurrentUser().getId();
 
         return syllabusService
-                .getFullSyllabusById(id)
+                .getFullSyllabusById(id, userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-        }
+    }
 
-    // =========================================================
-    // UPLOAD PDF + EXTRACT TEXT + SAVE TO DATABASE
-    // =========================================================
-
+    // UPLOAD PDF, EXTRACT TEXT, AND SAVE
     @PostMapping(
             value = "/upload",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -94,72 +92,49 @@ public class SyllabusController {
             @RequestParam("file") MultipartFile file) {
 
         try {
-
-            // 1. Extract text from PDF
             String extractedText =
                     pdfTextExtractionService.extractText(file);
 
-            // 2. Create Syllabus object
+            String originalFileName = file.getOriginalFilename();
+
             Syllabus syllabus = new Syllabus();
 
-            String originalFileName =
-                    file.getOriginalFilename();
-
-            // 3. Store original PDF filename
             syllabus.setFileName(originalFileName);
-
-            // 4. Create syllabus name from filename
             syllabus.setName(
                     originalFileName != null
                             ? originalFileName.replace(".pdf", "")
                             : "Uploaded Syllabus"
             );
-
-            // 5. Store extracted PDF text
             syllabus.setExtractedText(extractedText);
 
-            // 6. Save syllabus to PostgreSQL
+            // Assign the authenticated user as owner
+            syllabus.setOwner(currentUserService.getCurrentUser());
+
             Syllabus savedSyllabus =
                     syllabusService.createSyllabus(syllabus);
 
-            // 7. Return success response
             return ResponseEntity.ok(
                     Map.of(
-                            "id",
-                            savedSyllabus.getId(),
-
-                            "name",
-                            savedSyllabus.getName(),
-
+                            "id", savedSyllabus.getId(),
+                            "name", savedSyllabus.getName(),
                             "fileName",
-                            savedSyllabus.getFileName(),
-
+                            savedSyllabus.getFileName() == null
+                                    ? ""
+                                    : savedSyllabus.getFileName(),
                             "message",
                             "PDF uploaded, text extracted and syllabus saved successfully",
-
-                            "textLength",
-                            extractedText.length()
+                            "textLength", extractedText.length()
                     )
             );
 
         } catch (IllegalArgumentException e) {
-
-            // Invalid file / non-PDF / empty file
             return ResponseEntity.badRequest().body(
-                    Map.of(
-                            "error",
-                            e.getMessage()
-                    )
+                    Map.of("error", e.getMessage())
             );
 
         } catch (IOException e) {
-
-            // PDF reading/extraction error
             return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "error",
-                            "Unable to read PDF file"
-                    )
+                    Map.of("error", "Unable to read PDF file")
             );
         }
     }

@@ -1,5 +1,7 @@
+
 package com.campuspulse.entity.user;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -17,6 +19,7 @@ public class AppUser {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -53,6 +56,7 @@ public class AppUser {
         this.email = email;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }

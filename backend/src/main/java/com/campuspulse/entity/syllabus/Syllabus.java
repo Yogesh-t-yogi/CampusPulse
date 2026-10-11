@@ -1,5 +1,7 @@
+
 package com.campuspulse.entity.syllabus;
 
+import com.campuspulse.entity.user.AppUser;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -14,6 +16,11 @@ public class Syllabus {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // User who owns this syllabus
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser owner;
+
     @Column(nullable = false)
     private String name;
 
@@ -23,7 +30,11 @@ public class Syllabus {
     @Column(name = "extracted_text", columnDefinition = "TEXT")
     private String extractedText;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP WITH TIME ZONE"
+    )
     private LocalDateTime createdAt;
 
     @OneToMany(
@@ -38,11 +49,21 @@ public class Syllabus {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
     public Long getId() {
         return id;
+    }
+
+    public AppUser getOwner() {
+        return owner;
+    }
+
+    public void setOwner(AppUser owner) {
+        this.owner = owner;
     }
 
     public String getName() {

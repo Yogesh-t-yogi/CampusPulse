@@ -1,5 +1,7 @@
+
 package com.campuspulse.entity.syllabus;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ public class Subject {
 
     private String code;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "syllabus_id", nullable = false)
     private Syllabus syllabus;
@@ -36,6 +39,10 @@ public class Subject {
         return id;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getName() {
         return name;
     }
@@ -52,6 +59,7 @@ public class Subject {
         this.code = code;
     }
 
+    @JsonIgnore
     public Syllabus getSyllabus() {
         return syllabus;
     }
@@ -67,6 +75,7 @@ public class Subject {
     public void setUnits(List<Unit> units) {
         this.units = units;
     }
+
     public void addUnit(Unit unit) {
         units.add(unit);
         unit.setSubject(this);
