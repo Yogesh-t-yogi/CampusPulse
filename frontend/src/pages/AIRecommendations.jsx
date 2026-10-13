@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8081";
+const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
 
 function AIRecommendations({ syllabusId }) {
   const [recommendations, setRecommendations] = useState([]);

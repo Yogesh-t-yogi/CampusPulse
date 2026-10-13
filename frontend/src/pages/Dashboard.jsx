@@ -16,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 
-const API_BASE_URL = "http://localhost:8081";
+const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
 
 const STATUS_COLORS = {
   MATCHED: "#16a34a",
