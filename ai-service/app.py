@@ -16,6 +16,7 @@ MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
 HF_API_URL = (
     "https://router.huggingface.co/hf-inference/models/"
     + MODEL_ID
+    + "/pipeline/feature-extraction"
 )
 
 
