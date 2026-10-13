@@ -74,9 +74,18 @@ def generate_embedding(request: EmbeddingRequest):
             response.raise_for_status()
             data = response.json()
 
+    
     except httpx.HTTPStatusError as exc:
-        # Do not return provider response bodies or secrets to clients.
         status = exc.response.status_code
+
+        # Log upstream status and response for diagnosis.
+        # Never log request headers or the HF_TOKEN.
+        print(
+            f"Hugging Face upstream HTTP {status}: "
+            f"{exc.response.text[:1000]}",
+            flush=True,
+        )
+
         if status in (401, 403):
             detail = "Hugging Face authentication or access failed"
         elif status == 429:
@@ -89,11 +98,6 @@ def generate_embedding(request: EmbeddingRequest):
             detail=detail,
         ) from exc
 
-    except (httpx.RequestError, ValueError) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="Could not obtain embeddings from Hugging Face",
-        ) from exc
 
     # Accept a vector [384] or a single-item batch [[384]].
     if (
