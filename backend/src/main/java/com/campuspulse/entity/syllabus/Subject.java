@@ -20,15 +20,16 @@ public class Subject {
 
     private String code;
 
+    // Prevent Subject -> Syllabus -> Subject recursion
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "syllabus_id", nullable = false)
     private Syllabus syllabus;
 
     @OneToMany(
-            mappedBy = "subject",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
+        mappedBy = "subject",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
     )
     private List<Unit> units = new ArrayList<>();
 

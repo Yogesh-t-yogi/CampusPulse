@@ -4977,3 +4977,248 @@ body {
 .cp-auth .ca-password-toggle {
   background: transparent;
 }
+
+
+
+
+/* ===== CampusPulse Syllabus Upload ===== */
+
+.syllabus-upload-page {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 32px;
+  color: var(--text-primary, #172033);
+}
+
+.upload-card {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 28px;
+  background: var(--card-background, #ffffff);
+  border: 1px solid var(--border-color, #e7e9f0);
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(20, 25, 50, 0.05);
+}
+
+.upload-header {
+  margin-bottom: 24px;
+}
+
+.upload-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 750;
+}
+
+.upload-header p {
+  margin-top: 8px;
+  color: #778096;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* PDF dropzone */
+
+.upload-dropzone {
+  display: flex;
+  min-height: 230px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  background: #faf9ff;
+  border: 2px dashed #c8c0f4;
+  border-radius: 14px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone:focus-visible {
+  background: #f1efff;
+  border-color: #6558d3;
+  outline: none;
+}
+
+.upload-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 12px;
+  color: #6558d3;
+  background: #eeeaff;
+  border-radius: 16px;
+}
+
+.upload-dropzone h3 {
+  margin: 8px 0;
+  font-size: 17px;
+}
+
+.upload-dropzone p {
+  margin: 4px 0;
+  color: #778096;
+  font-size: 13px;
+}
+
+/* Selected PDF */
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #e7e9f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.file-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  color: #6558d3;
+  background: #eeeaff;
+  border-radius: 12px;
+}
+
+.file-details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.file-details strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.file-details span {
+  color: #778096;
+  font-size: 12px;
+}
+
+.selected-file button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  color: #b42318;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.selected-file button:hover:not(:disabled) {
+  background: #fff0ef;
+}
+
+.selected-file button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Upload button */
+
+.upload-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 22px;
+  padding: 14px 18px;
+  color: #fff;
+  background: #6558d3;
+  border: 0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.upload-button:hover:not(:disabled) {
+  background: #5145b5;
+}
+
+.upload-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Success and error messages */
+
+.upload-error,
+.upload-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.upload-error {
+  color: #b42318;
+  background: #fff0ef;
+  border: 1px solid #ffd5d2;
+}
+
+.upload-message {
+  color: #187443;
+  background: #ecfdf3;
+  border: 1px solid #b7ebca;
+}
+
+.upload-error svg,
+.upload-message svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Security note */
+
+.upload-note {
+  margin: 16px 0 0;
+  text-align: center;
+  color: #8991a3;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Responsive layout */
+
+@media (max-width: 650px) {
+  .syllabus-upload-page {
+    padding: 20px 14px;
+  }
+
+  .upload-card {
+    padding: 18px;
+  }
+
+  .upload-header h2 {
+    font-size: 21px;
+  }
+
+  .upload-dropzone {
+    min-height: 190px;
+    padding: 16px;
+  }
+
+  .selected-file {
+    flex-wrap: wrap;
+  }
+}

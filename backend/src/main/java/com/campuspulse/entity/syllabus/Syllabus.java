@@ -2,6 +2,7 @@
 package com.campuspulse.entity.syllabus;
 
 import com.campuspulse.entity.user.AppUser;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,8 @@ public class Syllabus {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // User who owns this syllabus
+    // Prevent circular JSON serialization through AppUser
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private AppUser owner;
@@ -31,16 +33,16 @@ public class Syllabus {
     private String extractedText;
 
     @Column(
-            name = "created_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP WITH TIME ZONE"
+        name = "created_at",
+        nullable = false,
+        columnDefinition = "TIMESTAMP WITH TIME ZONE"
     )
     private LocalDateTime createdAt;
 
     @OneToMany(
-            mappedBy = "syllabus",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
+        mappedBy = "syllabus",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
     )
     private List<Subject> subjects = new ArrayList<>();
 
@@ -58,6 +60,7 @@ public class Syllabus {
         return id;
     }
 
+    @JsonIgnore
     public AppUser getOwner() {
         return owner;
     }

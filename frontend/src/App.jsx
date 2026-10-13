@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
 import Sidebar from "./components/Sidebar";
@@ -7,25 +8,52 @@ import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
 import GapAnalysis from "./pages/GapAnalysis";
 import AIRecommendations from "./pages/AIRecommendations";
-
+import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-
 import "./App.css";
 
-const API_BASE_URL = "http://localhost:8081";
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"
+).replace(/\/$/, "");
+
+function getSyllabusId(payload) {
+  if (!payload || typeof payload !== "object") return "";
+
+  const candidates = [
+    payload.id,
+    payload.syllabusId,
+    payload.syllabus?.id,
+    payload.data?.id,
+    payload.data?.syllabusId,
+    payload.data?.syllabus?.id,
+  ];
+
+  const id = candidates.find(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== ""
+  );
+
+  return id === undefined ? "" : String(id);
+}
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
+
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
   );
-  const [authPage, setAuthPage] = useState("login");
 
+  const [authPage, setAuthPage] = useState("login");
   const [syllabi, setSyllabi] = useState([]);
+
   const [selectedSyllabusId, setSelectedSyllabusId] = useState(
     () => sessionStorage.getItem("campuspulse_syllabus_id") || ""
   );
+
   const [syllabiLoading, setSyllabiLoading] = useState(false);
   const [syllabiError, setSyllabiError] = useState("");
 
@@ -49,17 +77,17 @@ function App() {
     setActivePage("Dashboard");
   };
 
-  useEffect(() => {
-    if (!token) {
-      setSyllabi([]);
-      setSelectedSyllabusId("");
-      setSyllabiLoading(false);
-      return;
-    }
+  // Fetch the logged-in user's syllabi.
+  // After upload, prefer the newly created syllabus ID.
+  const refreshSyllabi = useCallback(
+    async (preferredId = "", selectFirstAfterUpload = false) => {
+      if (!token) {
+        setSyllabi([]);
+        setSelectedSyllabusId("");
+        setSyllabiLoading(false);
+        return;
+      }
 
-    let cancelled = false;
-
-    const fetchSyllabi = async () => {
       setSyllabiLoading(true);
       setSyllabiError("");
 
@@ -73,35 +101,36 @@ function App() {
           }
         );
 
-        if (cancelled) return;
-
-        // Prevent the UI from crashing if the API response isn't an array.
         const userSyllabi = Array.isArray(response.data)
           ? response.data
           : [];
 
-        if (!Array.isArray(response.data)) {
-          console.error(
-            "Expected an array from GET /api/syllabus:",
-            response.data
-          );
-        }
-
         setSyllabi(userSyllabi);
 
-        const savedId = sessionStorage.getItem(
-          "campuspulse_syllabus_id"
-        );
+        const savedId =
+          sessionStorage.getItem("campuspulse_syllabus_id") || "";
 
-        const savedSyllabusExists = userSyllabi.some(
-          (syllabus) => String(syllabus.id) === savedId
-        );
+        const preferredExists =
+          preferredId &&
+          userSyllabi.some(
+            (item) => String(item.id) === String(preferredId)
+          );
 
-        const nextId = savedSyllabusExists
-          ? savedId
-          : userSyllabi.length > 0
+        const savedExists =
+          savedId &&
+          userSyllabi.some(
+            (item) => String(item.id) === String(savedId)
+          );
+
+        const nextId = preferredExists
+          ? String(preferredId)
+          : selectFirstAfterUpload && userSyllabi.length
             ? String(userSyllabi[0].id)
-            : "";
+            : savedExists
+              ? savedId
+              : userSyllabi.length
+                ? String(userSyllabi[0].id)
+                : "";
 
         setSelectedSyllabusId(nextId);
 
@@ -111,48 +140,33 @@ function App() {
           sessionStorage.removeItem("campuspulse_syllabus_id");
         }
       } catch (error) {
-        if (cancelled) return;
-
         console.error("Failed to load syllabi:", {
           message: error.message,
-          code: error.code,
           status: error.response?.status,
           response: error.response?.data,
           url: error.config?.url,
         });
 
-        setSyllabi([]);
-        setSelectedSyllabusId("");
-        sessionStorage.removeItem("campuspulse_syllabus_id");
-
-        if (error.response?.status === 401) {
-          setSyllabiError(
-            "Your session may have expired. Please log in again."
-          );
-        } else if (error.response?.status === 403) {
-          setSyllabiError(
-            "Access denied. Please check your account permissions."
-          );
-        } else if (!error.response) {
-          setSyllabiError(
-            "Cannot connect to the backend. Check that Spring Boot is running on port 8081."
-          );
-        } else {
-          setSyllabiError("Failed to load your syllabi.");
-        }
+        setSyllabiError(
+          error.response?.status === 401
+            ? "Your session may have expired. Please log in again."
+            : error.response?.status === 403
+              ? "Access denied. Please check your account permissions."
+              : !error.response
+                ? "Cannot connect to the backend. Check port 8081."
+                : "Failed to load your syllabi."
+        );
       } finally {
-        if (!cancelled) {
-          setSyllabiLoading(false);
-        }
+        setSyllabiLoading(false);
       }
-    };
+    },
+    [token]
+  );
 
-    fetchSyllabi();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  // Load syllabi after login and whenever the token changes.
+  useEffect(() => {
+    refreshSyllabi();
+  }, [refreshSyllabi]);
 
   const handleSyllabusChange = (event) => {
     const id = event.target.value;
@@ -164,6 +178,13 @@ function App() {
     } else {
       sessionStorage.removeItem("campuspulse_syllabus_id");
     }
+  };
+
+  // Called after the PDF upload succeeds.
+  const handleUploaded = async (uploadResponse) => {
+    const uploadedId = getSyllabusId(uploadResponse);
+
+    await refreshSyllabi(uploadedId, true);
   };
 
   if (!token) {
@@ -185,29 +206,51 @@ function App() {
   }
 
   const renderPage = () => {
-    if (activePage === "Dashboard") {
-      return <Dashboard syllabusId={selectedSyllabusId} />;
-    }
+    switch (activePage) {
+      case "Upload Syllabus":
+        return (
+          <SyllabusUpload
+            token={token}
+            onUploaded={handleUploaded}
+          />
+        );
 
-    if (activePage === "Curriculum") {
-      return <Curriculum syllabusId={selectedSyllabusId} />;
-    }
+      case "Curriculum":
+        return (
+          <Curriculum
+            key={selectedSyllabusId}
+            syllabusId={selectedSyllabusId}
+          />
+        );
 
-    if (activePage === "Job Market") {
-      return <JobMarket />;
-    }
+      case "Job Market":
+        return <JobMarket />;
 
-    if (activePage === "Gap Analysis") {
-      return <GapAnalysis syllabusId={selectedSyllabusId} />;
-    }
+      case "Gap Analysis":
+        return (
+          <GapAnalysis
+            key={selectedSyllabusId}
+            syllabusId={selectedSyllabusId}
+          />
+        );
 
-    if (activePage === "AI Recommendations") {
-      return (
-        <AIRecommendations syllabusId={selectedSyllabusId} />
-      );
-    }
+      case "AI Recommendations":
+        return (
+          <AIRecommendations
+            key={selectedSyllabusId}
+            syllabusId={selectedSyllabusId}
+          />
+        );
 
-    return <Dashboard syllabusId={selectedSyllabusId} />;
+      case "Dashboard":
+      default:
+        return (
+          <Dashboard
+            key={selectedSyllabusId}
+            syllabusId={selectedSyllabusId}
+          />
+        );
+    }
   };
 
   const safeSyllabi = Array.isArray(syllabi) ? syllabi : [];
@@ -221,6 +264,7 @@ function App() {
 
       <main className="main-content">
         <div
+          className="app-topbar"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -239,7 +283,9 @@ function App() {
               id="syllabus-selector"
               value={selectedSyllabusId}
               onChange={handleSyllabusChange}
-              disabled={syllabiLoading || safeSyllabi.length === 0}
+              disabled={
+                syllabiLoading || safeSyllabi.length === 0
+              }
             >
               <option value="">
                 {syllabiLoading
@@ -255,15 +301,15 @@ function App() {
                   {syllabus.name ||
                     syllabus.fileName ||
                     `Syllabus ${syllabus.id}`}
-                  {" (ID: "}
-                  {syllabus.id}
-                  {")"}
+                  {" "}(ID: {syllabus.id})
                 </option>
               ))}
             </select>
 
             {syllabiError && (
-              <p className="error-message">{syllabiError}</p>
+              <p className="error-message" role="alert">
+                {syllabiError}
+              </p>
             )}
 
             {!syllabiLoading &&

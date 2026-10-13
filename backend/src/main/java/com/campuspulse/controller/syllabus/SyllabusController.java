@@ -83,6 +83,7 @@ public class SyllabusController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+
     // UPLOAD PDF, EXTRACT TEXT, AND SAVE
     @PostMapping(
             value = "/upload",
@@ -92,9 +93,35 @@ public class SyllabusController {
             @RequestParam("file") MultipartFile file) {
 
         try {
+            System.out.println("========== PDF UPLOAD STARTED ==========");
+            System.out.println("Filename: " + file.getOriginalFilename());
+            System.out.println("Uploaded file size: " + file.getSize());
+
+            // Step 1: Extract PDF text
             String extractedText =
                     pdfTextExtractionService.extractText(file);
 
+            System.out.println(
+                    "Extracted text length: " +
+                    (extractedText == null ? "NULL" : extractedText.length())
+            );
+
+            System.out.println(
+                    "Extracted text preview: " +
+                    (extractedText == null
+                            ? "NULL"
+                            : extractedText.substring(
+                                    0, Math.min(300, extractedText.length()))
+                    )
+            );
+
+            if (extractedText == null || extractedText.isBlank()) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("error", "No readable text was extracted from the PDF.")
+                );
+            }
+
+            // Step 2: Create syllabus entity
             String originalFileName = file.getOriginalFilename();
 
             Syllabus syllabus = new Syllabus();
@@ -102,40 +129,53 @@ public class SyllabusController {
             syllabus.setFileName(originalFileName);
             syllabus.setName(
                     originalFileName != null
-                            ? originalFileName.replace(".pdf", "")
+                            ? originalFileName.replaceAll("(?i)\\.pdf$", "")
                             : "Uploaded Syllabus"
             );
             syllabus.setExtractedText(extractedText);
-
-            // Assign the authenticated user as owner
             syllabus.setOwner(currentUserService.getCurrentUser());
 
+            // Step 3: Save syllabus
             Syllabus savedSyllabus =
                     syllabusService.createSyllabus(syllabus);
+
+            System.out.println("Saved syllabus ID: " + savedSyllabus.getId());
+            System.out.println(
+                    "Saved text length: " +
+                    (savedSyllabus.getExtractedText() == null
+                            ? "NULL"
+                            : savedSyllabus.getExtractedText().length())
+            );
+            System.out.println("========== PDF UPLOAD FINISHED ==========");
 
             return ResponseEntity.ok(
                     Map.of(
                             "id", savedSyllabus.getId(),
                             "name", savedSyllabus.getName(),
-                            "fileName",
-                            savedSyllabus.getFileName() == null
+                            "fileName", savedSyllabus.getFileName() == null
                                     ? ""
                                     : savedSyllabus.getFileName(),
-                            "message",
-                            "PDF uploaded, text extracted and syllabus saved successfully",
-                            "textLength", extractedText.length()
+                            "message", "PDF uploaded and text extracted successfully",
+                            "textLength", savedSyllabus.getExtractedText().length()
                     )
             );
 
         } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+
             return ResponseEntity.badRequest().body(
-                    Map.of("error", e.getMessage())
+                    Map.of("error", e.getMessage() == null
+                            ? "Invalid PDF file"
+                            : e.getMessage())
             );
 
         } catch (IOException e) {
+            e.printStackTrace();
+
             return ResponseEntity.internalServerError().body(
                     Map.of("error", "Unable to read PDF file")
             );
         }
     }
+
 }

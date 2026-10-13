@@ -109,3 +109,16 @@ __pycache__/
 
 # Python environment files
 ai-service/.env
+
+# Local database backups and Docker image archives
+*.dump
+*.tar
+
+# Local environment configuration
+.env
+.env.*
+!.env.example
+
+
+# Local temporary diff output
+/cls

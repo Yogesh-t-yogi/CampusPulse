@@ -1,5 +1,7 @@
+
 package com.campuspulse.entity.syllabus;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -16,6 +18,8 @@ public class Topic {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    // Prevent Topic -> Unit -> Topic recursion
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id", nullable = false)
     private Unit unit;
@@ -43,6 +47,7 @@ public class Topic {
         this.description = description;
     }
 
+    @JsonIgnore
     public Unit getUnit() {
         return unit;
     }
