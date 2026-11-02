@@ -2,10 +2,8 @@
 import { useRef, useState } from "react";
 import axios from "axios";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
+import { API_BASE_URL } from "../api";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://campuspulse-backend-x5xh.onrender.com"
-).replace(/\/$/, "");
 function SyllabusUpload({ token, onUploaded }) {
   const inputRef = useRef(null);
 
@@ -84,6 +82,14 @@ function SyllabusUpload({ token, onUploaded }) {
       }
 
       console.log("PDF upload successful:", uploadResponse.data);
+      const uploadedSyllabus = {
+        ...uploadResponse.data,
+        id: uploadedSyllabusId,
+      };
+
+      if (onUploaded) {
+        await onUploaded(uploadedSyllabus, false);
+      }
 
       // STEP 3: Process the saved syllabus using AI
       setMessage("PDF uploaded. Processing syllabus content...");
@@ -99,17 +105,22 @@ function SyllabusUpload({ token, onUploaded }) {
       );
 
       console.log("AI processing successful:", processResponse.data);
+      const processingResult = processResponse.data;
 
       // STEP 4: Refresh the syllabus list in the parent component
       if (onUploaded) {
         await onUploaded({
-          ...uploadResponse.data,
-          id: uploadedSyllabusId,
+          ...uploadedSyllabus,
+          processing: processingResult,
         });
       }
 
       // STEP 5: Show success and clear the selected file
-      setMessage("Syllabus uploaded and processed successfully!");
+      setMessage(
+        processingResult?.embeddingFailures > 0
+          ? "Curriculum extracted and saved. Embeddings need attention; see the notice above."
+          : "Syllabus uploaded and processed successfully!"
+      );
       setFile(null);
 
       if (inputRef.current) {

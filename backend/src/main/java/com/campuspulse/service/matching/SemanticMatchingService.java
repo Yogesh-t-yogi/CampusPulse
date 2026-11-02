@@ -5,6 +5,7 @@ import com.campuspulse.entity.job.JobRequiredSkill;
 import com.campuspulse.repository.embedding.VectorSearchRepository;
 import com.campuspulse.repository.job.JobRequiredSkillRepository;
 import com.campuspulse.service.embedding.EmbeddingService;
+import com.campuspulse.service.job.SkillAliasService;
 import org.springframework.stereotype.Service;
 import com.campuspulse.dto.matching.SemanticGapReport;
 
@@ -19,11 +20,13 @@ public class SemanticMatchingService {
     private final JobRequiredSkillRepository jobRequiredSkillRepository;
     private final VectorSearchRepository vectorSearchRepository;
     private final EmbeddingService embeddingService;
+    private final SkillAliasService skillAliasService;
 
     public SemanticMatchingService(
             JobRequiredSkillRepository jobRequiredSkillRepository,
             VectorSearchRepository vectorSearchRepository,
-            EmbeddingService embeddingService) {
+            EmbeddingService embeddingService,
+            SkillAliasService skillAliasService) {
 
         this.jobRequiredSkillRepository =
                 jobRequiredSkillRepository;
@@ -33,6 +36,7 @@ public class SemanticMatchingService {
 
         this.embeddingService =
                 embeddingService;
+        this.skillAliasService = skillAliasService;
     }
 
     public List<SemanticSkillMatch> matchSkills(
@@ -59,10 +63,11 @@ public class SemanticMatchingService {
             }
 
             String skill = jobSkill.getSkill();
+            String normalizedSkill = skillAliasService.normalizeSkill(skill);
 
             // Generate embedding for the job skill
             List<Double> embedding =
-                    embeddingService.generateEmbedding(skill);
+                    embeddingService.generateEmbedding(normalizedSkill);
 
             String vector =
                     embedding.stream()

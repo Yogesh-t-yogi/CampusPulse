@@ -1,8 +1,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-
-const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
+import { API_BASE_URL } from "../api";
 
 function Curriculum({ syllabusId }) {
   const [syllabus, setSyllabus] = useState(null);
@@ -11,6 +10,9 @@ function Curriculum({ syllabusId }) {
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [expandedUnits, setExpandedUnits] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [processingError, setProcessingError] = useState("");
+  const [reloadVersion, setReloadVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,6 +23,7 @@ function Curriculum({ syllabusId }) {
       setExpandedSubjects({});
       setExpandedUnits({});
       setSearchTerm("");
+      setProcessingError("");
 
       if (!syllabusId) {
         setError("Select a syllabus to explore its curriculum.");
@@ -80,7 +83,53 @@ function Curriculum({ syllabusId }) {
     return () => {
       cancelled = true;
     };
-  }, [syllabusId]);
+  }, [syllabusId, reloadVersion]);
+
+  const processSyllabus = async () => {
+    const token = sessionStorage.getItem("campuspulse_token");
+    if (!token) {
+      setProcessingError("Your login session is missing. Please log in again.");
+      return;
+    }
+
+    setProcessing(true);
+    setProcessingError("");
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/ai/syllabus/${syllabusId}/save`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.data?.curriculumSaved) {
+        throw new Error(
+          response.data?.error || "The server did not save curriculum content."
+        );
+      }
+
+      setReloadVersion((version) => version + 1);
+    } catch (err) {
+      console.error("Failed to process syllabus:", {
+        status: err.response?.status,
+        response: err.response?.data,
+        url: err.config?.url,
+        message: err.message,
+      });
+      setProcessingError(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.response?.data?.detail ||
+          err.message ||
+          "Could not extract curriculum from this syllabus."
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const subjects = Array.isArray(syllabus?.subjects)
     ? syllabus.subjects
@@ -288,6 +337,25 @@ function Curriculum({ syllabusId }) {
           </div>
         </article>
       </section>
+
+      {subjects.length === 0 && (
+        <section className="cc-empty" aria-live="polite">
+          <h2>No curriculum has been extracted yet</h2>
+          <p>
+            The PDF is saved. Process it to extract its subjects, units, and
+            topics.
+          </p>
+          {processingError && <p role="alert">{processingError}</p>}
+          <button
+            type="button"
+            className="cc-button cc-button-primary"
+            onClick={processSyllabus}
+            disabled={processing}
+          >
+            {processing ? "Extracting curriculum..." : "Extract syllabus content"}
+          </button>
+        </section>
+      )}
 
       <section className="cc-explorer">
         <div className="cc-explorer-header">

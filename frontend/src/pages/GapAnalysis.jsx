@@ -1,10 +1,9 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../api";
 
-const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
-
-function GapAnalysis({ syllabusId }) {
+function GapAnalysis({ syllabusId, jobId, token }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,7 +21,11 @@ function GapAnalysis({ syllabusId }) {
         return;
       }
 
-      const token = sessionStorage.getItem("campuspulse_token");
+      if (!jobId) {
+        setError("Choose a job profile to analyze your skill gaps.");
+        setLoading(false);
+        return;
+      }
 
       if (!token) {
         setError("Your session is missing. Please log in again.");
@@ -34,7 +37,7 @@ function GapAnalysis({ syllabusId }) {
 
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/api/matching/semantic/report/jobs/1/syllabus/${syllabusId}`,
+          `${API_BASE_URL}/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -76,7 +79,7 @@ function GapAnalysis({ syllabusId }) {
     return () => {
       cancelled = true;
     };
-  }, [syllabusId]);
+  }, [syllabusId, jobId, token]);
 
   if (loading) {
     return (
@@ -164,7 +167,13 @@ function GapAnalysis({ syllabusId }) {
   };
 
   return (
-    <main className="page-content cp-gap">
+    <main className="page-content cp-gap cg-pdf-report">
+      <header className="cg-print-header">
+        <strong>CampusPulse</strong>
+        <span>
+          Skill gap report · Syllabus {syllabusId} · Job profile {jobId}
+        </span>
+      </header>
       <section className="cg-hero">
         <div>
           <span className="cg-eyebrow">
@@ -181,6 +190,12 @@ function GapAnalysis({ syllabusId }) {
           <span>⌁</span>
         </div>
       </section>
+      <div className="cg-export-row cg-no-print">
+        <p>Save a faculty-ready PDF using your browser's print dialog.</p>
+        <button type="button" onClick={() => window.print()}>
+          Export report as PDF
+        </button>
+      </div>
 
       <section className="cg-overview">
         <div className="cg-overview-copy">

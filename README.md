@@ -10,7 +10,7 @@ CampusPulse is a web application that analyzes academic curricula against indust
 | Frontend | React, Vite, Axios, Recharts |
 | Backend | Java 17, Spring Boot, Maven Wrapper, Spring Security, JWT |
 | Database | PostgreSQL, pgvector |
-| AI embedding service | Python, FastAPI, Sentence Transformers |
+| AI embedding service | Python, FastAPI, FastEmbed (local ONNX inference) |
 | LLM integration | Groq API |
 
 ## Project Structure
@@ -36,7 +36,34 @@ Install the following on Windows:
 - pgvector compatible with PostgreSQL 18
 - A Groq API key
 
-The first build may take several minutes because dependencies and the AI embedding model must be downloaded.
+The first build may take several minutes while dependencies are installed.
+
+## Free job data strategy
+
+The app no longer depends on Adzuna. The default job source is now a free local dataset and starter catalog that works without keys, rate limits, or external configuration.
+
+Use a CSV import when you want a larger India-focused job dataset. A starter catalog is seeded automatically on first startup so the job market still works immediately in development.
+
+### Available free job and learning features
+
+- Skill aliases (for example, JS = JavaScript and Postgres = PostgreSQL) are
+  normalized during dataset import and matching.
+- AI Recommendations includes a step-by-step learning roadmap for missing or
+  partially covered skills, with freeCodeCamp and available official-document
+  links. Roadmap generation uses the configured Groq API key.
+- The Job Market page accepts a student resume PDF and compares its extracted
+  skills against accessible job profiles. The resume is not saved by
+  CampusPulse; resume text is sent to the configured Groq API for skill
+  extraction only after the user confirms this in the UI.
+- Gap Analysis can be printed or saved as PDF from the browser using
+  **Export report as PDF**.
+- The Job Market page charts the most requested skills in the local catalog
+  using Recharts.
+- Import a CSV dataset from Job Market. Provide a `title`, `job_title`, or
+  `role` column; optional columns include `company`, `location`,
+  `description`, and `skills` (or `required_skills`). Skills can be separated
+  by commas, semicolons, or pipes. CSV uploads are limited to 10 MB and
+  10,000 rows. Verify a dataset's license and permitted use before importing.
 
 ## 1. Clone the Repository
 
@@ -119,7 +146,7 @@ Verify the service in another terminal or browser:
 
 http://127.0.0.1:8000/health
 
-The embedding service uses `sentence-transformers/all-MiniLM-L6-v2` and generates 384-dimensional embeddings. Its first run downloads the model and requires an internet connection.
+The embedding service runs `sentence-transformers/all-MiniLM-L6-v2` locally through FastEmbed and returns 384-dimensional embeddings. It does not require a Hugging Face token or inference credits. On first startup, FastEmbed downloads the public model files; subsequent runs use the local cache.
 
 ## 4. Configure and Start Spring Boot
 
@@ -146,7 +173,7 @@ $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
 $rng.Dispose()
 ```
 
-Replace the database password and Groq API key placeholders with your own values. Never commit actual credentials to GitHub.
+Replace the database password and Groq API key placeholders with your own values. Never commit actual credentials to GitHub. Syllabus processing and custom job skill extraction use the Groq API.
 
 Start the backend:
 
@@ -179,6 +206,17 @@ http://localhost:5173
 
 Use the registration page to create a user account, then log in.
 
+During Vite development, the frontend uses `http://localhost:8081` by
+default. To use another backend, set `VITE_API_BASE_URL` in the same terminal
+before starting Vite:
+
+```powershell
+$env:VITE_API_BASE_URL = "http://localhost:8081"
+npm run dev
+```
+
+The production frontend defaults to the deployed CampusPulse backend.
+
 ## 6. Start-Up Order
 
 Start the components in this order:
@@ -192,10 +230,11 @@ Keep the Python, backend, and frontend terminals open while using the applicatio
 
 ## 7. Main Features
 
+- **Guided analysis flow:** Upload and process a syllabus, select an existing job profile or paste a job description, review the curriculum, analyze skill gaps, and view recommendations and dashboard metrics.
 - **Authentication:** User registration, login, and JWT-protected API access.
 - **Dashboard:** Overview of curriculum-to-industry matching results.
 - **Curriculum:** View syllabus subjects, units, and topics.
-- **Job Market:** Manage job requirements and extract required skills.
+- **Job Market:** Choose an existing job posting or create a private profile from a pasted description; AI extracts skills from the description.
 - **Gap Analysis:** Identify matched, partially matched, and missing skills using semantic similarity.
 - **AI Recommendations:** Generate curriculum and learning recommendations.
 
@@ -232,7 +271,7 @@ Check which process is using the required port before stopping anything. Do not 
 
 ### Empty dashboard
 
-A new database may not contain the demo syllabus or job records from your original computer. Upload and process a syllabus, create or populate job data, and generate the required embeddings before testing gap analysis.
+A new database may not contain the demo syllabus or job records from your original computer. Start with **Upload Syllabus**, then choose a saved job posting or paste a job description in **Job Market**. Creating a custom job profile and generating AI recommendations require a valid Groq API key. The frontend development server targets the local backend by default; set `VITE_API_BASE_URL` if you intend to use another backend.
 
 ## 9. Stop the Application
 

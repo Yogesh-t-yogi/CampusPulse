@@ -1,23 +1,26 @@
-
 import math
-import os
+from functools import lru_cache
+from pathlib import Path
 
-import httpx
+from fastembed import TextEmbedding
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="CampusPulse AI Embedding Service",
-    version="1.1.0",
+    version="1.2.0",
 )
 
-HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
-HF_API_URL = (
-    "https://router.huggingface.co/hf-inference/models/"
-    + MODEL_ID
-    + "/pipeline/feature-extraction"
-)
+
+
+@lru_cache(maxsize=1)
+def get_embedding_model() -> TextEmbedding:
+    cache_dir = Path.home() / ".cache" / "fastembed"
+    return TextEmbedding(
+        model_name=MODEL_ID,
+        cache_dir=str(cache_dir),
+    )
 
 
 class EmbeddingRequest(BaseModel):
@@ -34,7 +37,8 @@ class EmbeddingResponse(BaseModel):
 def health():
     return {
         "status": "UP",
-        "service": "CampusPulse AI Embedding Service",
+        "service": "CampusPulse local AI embedding service",
+        "model": MODEL_ID,
     }
 
 
@@ -48,95 +52,31 @@ def generate_embedding(request: EmbeddingRequest):
             detail="Text cannot be empty",
         )
 
-    if not HF_TOKEN:
+    data = next(get_embedding_model().embed([text]))
+    if len(data) != 384:
         raise HTTPException(
             status_code=500,
-            detail="HF_TOKEN is not configured",
+            detail=(
+                "Local embedding model returned "
+                f"{len(data)} values; expected 384"
+            ),
         )
 
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    payload = {
-        "inputs": text,
-        "normalize": True,
-    }
-
-    try:
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                HF_API_URL,
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-    
-    except httpx.HTTPStatusError as exc:
-        status = exc.response.status_code
-
-        # Log upstream status and response for diagnosis.
-        # Never log request headers or the HF_TOKEN.
-        print(
-            f"Hugging Face upstream HTTP {status}: "
-            f"{exc.response.text[:1000]}",
-            flush=True,
-        )
-
-        if status in (401, 403):
-            detail = "Hugging Face authentication or access failed"
-        elif status == 429:
-            detail = "Hugging Face rate limit reached"
-        else:
-            detail = f"Hugging Face inference failed ({status})"
-
+    embedding = [float(value) for value in data]
+    if not all(math.isfinite(value) for value in embedding):
         raise HTTPException(
-            status_code=502,
-            detail=detail,
-        ) from exc
-
-
-    # Accept a vector [384] or a single-item batch [[384]].
-    if (
-        isinstance(data, list)
-        and len(data) == 1
-        and isinstance(data[0], list)
-        and len(data[0]) == 384
-        and all(isinstance(x, (int, float)) for x in data[0])
-    ):
-        data = data[0]
-
-    if (
-        not isinstance(data, list)
-        or len(data) != 384
-        or not all(isinstance(x, (int, float)) for x in data)
-    ):
-        raise HTTPException(
-            status_code=502,
-            detail="Embedding provider did not return a 384-value vector",
+            status_code=500,
+            detail="Local embedding model returned invalid values",
         )
 
-    embedding = [float(x) for x in data]
-
-    if not all(math.isfinite(x) for x in embedding):
-        raise HTTPException(
-            status_code=502,
-            detail="Embedding provider returned invalid values",
-        )
-
-    # Ensure the output is normalized, as in the original service.
-    norm = math.sqrt(sum(x * x for x in embedding))
+    norm = math.sqrt(sum(value * value for value in embedding))
     if norm == 0:
         raise HTTPException(
-            status_code=502,
-            detail="Embedding provider returned a zero vector",
+            status_code=500,
+            detail="Local embedding model returned a zero vector",
         )
 
-    embedding = [x / norm for x in embedding]
-
+    embedding = [value / norm for value in embedding]
     return EmbeddingResponse(
         text=text,
         dimension=len(embedding),

@@ -8,6 +8,8 @@ import com.campuspulse.service.ai.SyllabusAiService;
 import com.campuspulse.service.ai.SyllabusPersistenceService;
 import com.campuspulse.service.syllabus.SyllabusService;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -62,7 +64,7 @@ public class SyllabusAiController {
 
     // GENERATE AND SAVE AI SYLLABUS STRUCTURE
     @PostMapping("/{id}/save")
-    public ResponseEntity<String> saveStructuredSyllabus(
+    public ResponseEntity<Map<String, Object>> saveStructuredSyllabus(
             @PathVariable Long id) {
 
         Long userId = currentUserService.getCurrentUser().getId();
@@ -78,7 +80,9 @@ public class SyllabusAiController {
         if (syllabus.getExtractedText() == null
                 || syllabus.getExtractedText().isBlank()) {
             return ResponseEntity.badRequest()
-                    .body("No extracted syllabus text found.");
+                    .body(Map.of(
+                            "error",
+                            "No extracted syllabus text found."));
         }
 
         // Step 1: Send syllabus text to AI
@@ -88,13 +92,22 @@ public class SyllabusAiController {
                 );
 
         // Step 2: Persist the generated structure
-        syllabusPersistenceService.saveAiStructure(
+        Syllabus savedSyllabus = syllabusPersistenceService.saveAiStructure(
                 syllabus,
                 aiResponse
         );
+        SyllabusPersistenceService.EmbeddingGenerationResult embeddings =
+                syllabusPersistenceService.generateEmbeddings(savedSyllabus);
 
-        return ResponseEntity.ok(
-                "AI syllabus structure saved successfully."
-        );
+        return ResponseEntity.ok(Map.of(
+                "syllabusId", savedSyllabus.getId(),
+                "curriculumSaved", true,
+                "embeddingsGenerated", embeddings.generated(),
+                "embeddingFailures", embeddings.failed(),
+                "embeddingWarning", embeddings.warning(),
+                "message", embeddings.failed() == 0
+                        ? "AI syllabus structure saved successfully."
+                        : "Curriculum saved, but embedding generation needs attention."
+        ));
     }
 }

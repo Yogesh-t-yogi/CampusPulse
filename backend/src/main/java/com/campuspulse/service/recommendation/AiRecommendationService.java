@@ -100,6 +100,12 @@ public class AiRecommendationService {
                 4. curriculumRecommendation
                 5. studentRecommendation
                 6. priority
+                7. learningRoadmap: for PARTIAL or GAP skills, provide 3
+                   concise sequential steps, each with a title and an action.
+                   For MATCHED skills return an empty array.
+
+                Roadmap actions must be practical, beginner-friendly, and
+                achievable with free learning materials. Do not invent URLs.
 
                 Priority must be one of:
                 HIGH, MEDIUM, LOW
@@ -124,7 +130,21 @@ public class AiRecommendationService {
                     "studentRecommendation":
                     "Learn PostgreSQL basics and practice
                     CRUD operations using Spring Boot.",
-                    "priority": "HIGH"
+                    "priority": "HIGH",
+                    "learningRoadmap": [
+                      {
+                        "title": "Learn the foundations",
+                        "action": "Study tables, data types, and basic SELECT queries."
+                      },
+                      {
+                        "title": "Practice core operations",
+                        "action": "Create a small database and practice joins and CRUD queries."
+                      },
+                      {
+                        "title": "Build a project",
+                        "action": "Connect a small application to PostgreSQL and document the schema."
+                      }
+                    ]
                   }
                 ]
                 """

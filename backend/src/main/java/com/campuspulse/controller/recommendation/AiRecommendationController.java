@@ -5,6 +5,7 @@ import com.campuspulse.dto.matching.SemanticGapReport;
 import com.campuspulse.dto.recommendation.AiRecommendation;
 import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.matching.SemanticMatchingService;
+import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.recommendation.AiRecommendationService;
 import com.campuspulse.service.syllabus.SyllabusService;
 
@@ -22,17 +23,20 @@ public class AiRecommendationController {
     private final AiRecommendationService aiRecommendationService;
     private final SyllabusService syllabusService;
     private final CurrentUserService currentUserService;
+    private final JobPostingService jobPostingService;
 
     public AiRecommendationController(
             SemanticMatchingService semanticMatchingService,
             AiRecommendationService aiRecommendationService,
             SyllabusService syllabusService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            JobPostingService jobPostingService) {
 
         this.semanticMatchingService = semanticMatchingService;
         this.aiRecommendationService = aiRecommendationService;
         this.syllabusService = syllabusService;
         this.currentUserService = currentUserService;
+        this.jobPostingService = jobPostingService;
     }
 
     // GENERATE RECOMMENDATIONS FOR THE USER'S SYLLABUS
@@ -54,6 +58,7 @@ public class AiRecommendationController {
                     "Syllabus not found"
             );
         }
+        jobPostingService.requireAccessibleJob(jobId, userId);
 
         SemanticGapReport gapReport =
                 semanticMatchingService.generateGapReport(

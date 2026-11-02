@@ -1,5 +1,7 @@
 package com.campuspulse.entity.job;
 
+import com.campuspulse.entity.user.AppUser;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -26,6 +28,11 @@ public class JobPosting {
 
     @Column(name = "job_url")
     private String jobUrl;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_user_id")
+    private AppUser owner;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -88,6 +95,14 @@ public class JobPosting {
 
     public void setJobUrl(String jobUrl) {
         this.jobUrl = jobUrl;
+    }
+
+    public AppUser getOwner() {
+        return owner;
+    }
+
+    public void setOwner(AppUser owner) {
+        this.owner = owner;
     }
 
     public LocalDateTime getCreatedAt() {

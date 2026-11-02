@@ -12,8 +12,13 @@ import com.campuspulse.entity.syllabus.Unit;
 import com.campuspulse.repository.embedding.TopicEmbeddingJdbcRepository;
 import com.campuspulse.repository.syllabus.SyllabusRepository;
 import com.campuspulse.service.embedding.EmbeddingService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import java.util.List;
 
 @Service
 public class SyllabusPersistenceService {
@@ -76,43 +81,86 @@ public class SyllabusPersistenceService {
             }
         }
 
-        // Save first so the topic records receive database IDs.
-        Syllabus savedSyllabus = syllabusRepository.save(syllabus);
+        return syllabusRepository.save(syllabus);
+    }
 
-        // Generate and store an embedding for every saved topic.
-        for (Subject subject : savedSyllabus.getSubjects()) {
-            for (Unit unit : subject.getUnits()) {
-                for (Topic topic : unit.getTopics()) {
+    public EmbeddingGenerationResult generateEmbeddings(
+            Syllabus syllabus) {
+        List<Topic> topics = syllabus.getSubjects().stream()
+                .flatMap(subject -> subject.getUnits().stream())
+                .flatMap(unit -> unit.getTopics().stream())
+                .toList();
 
-                    String text = topic.getName();
+        int generated = 0;
+        for (int index = 0; index < topics.size(); index++) {
+            Topic topic = topics.get(index);
+            try {
+                String text = topic.getName();
 
-                    if (topic.getDescription() != null
-                            && !topic.getDescription().isBlank()) {
-                        text += " " + topic.getDescription();
-                    }
-
-                    var embedding =
-                            embeddingService.generateEmbedding(text);
-
-                    if (embedding == null || embedding.size() != 384) {
-                        throw new IllegalStateException(
-                                "Invalid embedding for topic ID "
-                                        + topic.getId());
-                    }
-
-                    String vector = embedding.stream()
-                            .map(String::valueOf)
-                            .collect(java.util.stream.Collectors.joining(
-                                    ",", "[", "]"));
-
-                    topicEmbeddingRepository.saveEmbedding(
-                            topic.getId(),
-                            vector,
-                            "sentence-transformers/all-MiniLM-L6-v2");
+                if (topic.getDescription() != null
+                        && !topic.getDescription().isBlank()) {
+                    text += " " + topic.getDescription();
                 }
+
+                var embedding = embeddingService.generateEmbedding(text);
+
+                if (embedding == null || embedding.size() != 384) {
+                    throw new IllegalStateException(
+                            "Embedding service returned an invalid vector.");
+                }
+
+                String vector = embedding.stream()
+                        .map(String::valueOf)
+                        .collect(java.util.stream.Collectors.joining(
+                                ",", "[", "]"));
+
+                topicEmbeddingRepository.saveEmbedding(
+                        topic.getId(),
+                        vector,
+                        "sentence-transformers/all-MiniLM-L6-v2");
+                generated++;
+            } catch (WebClientException
+                     | DataAccessException
+                     | IllegalStateException exception) {
+                String detail = getEmbeddingFailureDetail(exception);
+                if (detail == null || detail.isBlank()) {
+                    detail = exception.getClass().getSimpleName();
+                }
+                if (detail.length() > 500) {
+                    detail = detail.substring(0, 500);
+                }
+
+                int failed = topics.size() - index;
+                return new EmbeddingGenerationResult(
+                        generated,
+                        failed,
+                        "Embedding generation stopped at topic "
+                                + topic.getId() + ": " + detail);
             }
         }
 
-        return savedSyllabus;
+        return new EmbeddingGenerationResult(generated, 0, "");
+    }
+
+    private String getEmbeddingFailureDetail(RuntimeException exception) {
+        if (exception instanceof WebClientResponseException responseException) {
+            int status = responseException.getStatusCode().value();
+            if (status == 503) {
+                return "The Python embedding service is missing configuration. "
+                        + "Set HF_TOKEN and restart that service.";
+            }
+            if (status == 502) {
+                return "The Hugging Face embedding request failed. Check "
+                        + "HF_TOKEN permissions and access to the configured model.";
+            }
+            return "The Python embedding service returned HTTP " + status + ".";
+        }
+        return exception.getMessage();
+    }
+
+    public record EmbeddingGenerationResult(
+            int generated,
+            int failed,
+            String warning) {
     }
 }

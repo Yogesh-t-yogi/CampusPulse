@@ -5,6 +5,7 @@ import com.campuspulse.dto.matching.SemanticSkillMatch;
 import com.campuspulse.dto.matching.SemanticGapReport;
 import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.matching.SemanticMatchingService;
+import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.syllabus.SyllabusService;
 
 import org.springframework.http.HttpStatus;
@@ -20,15 +21,18 @@ public class SemanticMatchingController {
     private final SemanticMatchingService semanticMatchingService;
     private final SyllabusService syllabusService;
     private final CurrentUserService currentUserService;
+    private final JobPostingService jobPostingService;
 
     public SemanticMatchingController(
             SemanticMatchingService semanticMatchingService,
             SyllabusService syllabusService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            JobPostingService jobPostingService) {
 
         this.semanticMatchingService = semanticMatchingService;
         this.syllabusService = syllabusService;
         this.currentUserService = currentUserService;
+        this.jobPostingService = jobPostingService;
     }
 
     // SEMANTIC SKILL MATCHING
@@ -38,6 +42,7 @@ public class SemanticMatchingController {
             @PathVariable Long syllabusId) {
 
         verifySyllabusOwnership(syllabusId);
+        verifyJobAccess(jobId);
 
         return semanticMatchingService.matchSkills(
                 jobId,
@@ -52,6 +57,7 @@ public class SemanticMatchingController {
             @PathVariable Long syllabusId) {
 
         verifySyllabusOwnership(syllabusId);
+        verifyJobAccess(jobId);
 
         return semanticMatchingService.generateGapReport(
                 jobId,
@@ -74,5 +80,10 @@ public class SemanticMatchingController {
                     "Syllabus not found"
             );
         }
+    }
+
+    private void verifyJobAccess(Long jobId) {
+        Long userId = currentUserService.getCurrentUser().getId();
+        jobPostingService.requireAccessibleJob(jobId, userId);
     }
 }

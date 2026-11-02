@@ -1,10 +1,37 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../api";
 
-const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
+const OFFICIAL_SKILL_DOCS = {
+  java: "https://dev.java/learn/",
+  javascript: "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+  typescript: "https://www.typescriptlang.org/docs/",
+  python: "https://docs.python.org/3/tutorial/",
+  react: "https://react.dev/learn",
+  "spring boot": "https://spring.io/guides",
+  postgresql: "https://www.postgresql.org/docs/current/tutorial.html",
+  sql: "https://www.freecodecamp.org/news/sql-tutorial/",
+  docker: "https://docs.docker.com/get-started/",
+  kubernetes: "https://kubernetes.io/docs/tutorials/",
+  pandas: "https://pandas.pydata.org/docs/getting_started/intro_tutorials/",
+  git: "https://git-scm.com/docs/gittutorial",
+};
 
-function AIRecommendations({ syllabusId }) {
+function getLearningResources(skill) {
+  const key = String(skill || "").trim().toLowerCase();
+  return [
+    {
+      label: "freeCodeCamp",
+      url: `https://www.freecodecamp.org/news/search/?query=${encodeURIComponent(skill || "")}`,
+    },
+    ...(OFFICIAL_SKILL_DOCS[key]
+      ? [{ label: "Official documentation", url: OFFICIAL_SKILL_DOCS[key] }]
+      : []),
+  ];
+}
+
+function AIRecommendations({ syllabusId, jobId, token }) {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,7 +49,11 @@ function AIRecommendations({ syllabusId }) {
         return;
       }
 
-      const token = sessionStorage.getItem("campuspulse_token");
+      if (!jobId) {
+        setError("Choose a job profile to generate recommendations.");
+        setLoading(false);
+        return;
+      }
 
       if (!token) {
         setError("Your login session is missing. Please log in again.");
@@ -34,7 +65,7 @@ function AIRecommendations({ syllabusId }) {
 
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/api/recommendations/jobs/1/syllabus/${syllabusId}`,
+          `${API_BASE_URL}/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -81,7 +112,7 @@ function AIRecommendations({ syllabusId }) {
     return () => {
       cancelled = true;
     };
-  }, [syllabusId]);
+  }, [syllabusId, jobId, token]);
 
   const getPriority = (priority) => {
     const value = String(priority || "MEDIUM").toUpperCase();
@@ -283,6 +314,45 @@ function AIRecommendations({ syllabusId }) {
                       </p>
                     </section>
                   </div>
+                  {status !== "MATCHED" && (
+                    <section className="cr-roadmap">
+                      <div className="cr-roadmap-heading">
+                        <div>
+                          <span className="cr-eyebrow">LEARNING ROADMAP</span>
+                          <h4>Build {item.skill || "this skill"} step by step</h4>
+                        </div>
+                        <span>Free learning resources</span>
+                      </div>
+                      {Array.isArray(item.learningRoadmap) &&
+                      item.learningRoadmap.length > 0 ? (
+                        <ol>
+                          {item.learningRoadmap.map((step, stepIndex) => (
+                            <li key={`${step.title}-${stepIndex}`}>
+                              <strong>{step.title || `Step ${stepIndex + 1}`}</strong>
+                              <p>{step.action}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="cr-roadmap-empty" role="status">
+                          No learning steps were returned for this skill.
+                          Refresh recommendations to try again.
+                        </p>
+                      )}
+                      <div className="cr-resource-links">
+                        {getLearningResources(item.skill).map((resource) => (
+                          <a
+                            href={resource.url}
+                            key={resource.label}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {resource.label}
+                          </a>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                 </article>
               );
             })}

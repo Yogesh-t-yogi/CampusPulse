@@ -8,6 +8,7 @@ import com.campuspulse.entity.syllabus.Topic;
 import com.campuspulse.entity.syllabus.Unit;
 import com.campuspulse.repository.job.JobRequiredSkillRepository;
 import com.campuspulse.repository.syllabus.SyllabusRepository;
+import com.campuspulse.service.job.SkillAliasService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,13 +22,16 @@ public class SkillMatchingService {
 
     private final JobRequiredSkillRepository jobRequiredSkillRepository;
     private final SyllabusRepository syllabusRepository;
+    private final SkillAliasService skillAliasService;
 
     public SkillMatchingService(
             JobRequiredSkillRepository jobRequiredSkillRepository,
-            SyllabusRepository syllabusRepository) {
+            SyllabusRepository syllabusRepository,
+            SkillAliasService skillAliasService) {
 
         this.jobRequiredSkillRepository = jobRequiredSkillRepository;
         this.syllabusRepository = syllabusRepository;
+        this.skillAliasService = skillAliasService;
     }
 
     public SkillMatchResponse matchSkills(
@@ -112,8 +116,9 @@ public class SkillMatchingService {
 
                     if (topic.getName() != null) {
 
-                        topics.add(
-                                normalize(topic.getName()));
+                        topics.add(normalize(
+                                skillAliasService.normalizeSkill(
+                                        topic.getName())));
                     }
                 }
             }
@@ -126,8 +131,8 @@ public class SkillMatchingService {
             String jobSkill,
             Set<String> syllabusTopics) {
 
-        String normalizedSkill =
-                normalize(jobSkill);
+        String normalizedSkill = normalize(
+                skillAliasService.normalizeSkill(jobSkill));
 
         // Exact match
         if (syllabusTopics.contains(normalizedSkill)) {
@@ -149,7 +154,7 @@ public class SkillMatchingService {
 
     private String normalize(String value) {
 
-        return value
+        return skillAliasService.normalizeSkill(value)
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9+#. ]", "")
                 .replaceAll("\\s+", " ")

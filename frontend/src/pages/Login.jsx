@@ -1,7 +1,8 @@
 
 import { useState } from "react";
+import { API_BASE_URL } from "../api";
 
-const API_URL = "https://campuspulse-backend-x5xh.onrender.com/api/auth";
+const API_URL = `${API_BASE_URL}/api/auth`;
 
 function Login({ onLogin, onShowRegister }) {
   const [email, setEmail] = useState("");

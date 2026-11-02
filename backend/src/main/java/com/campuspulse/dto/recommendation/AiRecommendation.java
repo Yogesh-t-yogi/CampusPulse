@@ -1,5 +1,7 @@
 package com.campuspulse.dto.recommendation;
 
+import java.util.List;
+
 public class AiRecommendation {
 
     private String skill;
@@ -8,6 +10,7 @@ public class AiRecommendation {
     private String curriculumRecommendation;
     private String studentRecommendation;
     private String priority;
+    private List<LearningRoadmapStep> learningRoadmap;
 
     public AiRecommendation() {
     }
@@ -52,5 +55,14 @@ public class AiRecommendation {
 
     public String getPriority() {
         return priority;
+    }
+
+    public List<LearningRoadmapStep> getLearningRoadmap() {
+        return learningRoadmap;
+    }
+
+    public void setLearningRoadmap(
+            List<LearningRoadmapStep> learningRoadmap) {
+        this.learningRoadmap = learningRoadmap;
     }
 }

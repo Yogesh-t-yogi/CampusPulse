@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import axios from "axios";
+import { API_BASE_URL } from "../api";
 
 import {
 
@@ -30,19 +31,7 @@ import {
 
 } from "recharts";
 
-const API_BASE_URL = "https://campuspulse-backend-x5xh.onrender.com";
-
-const STATUS_COLORS = {
-
-  MATCHED: "#16a34a",
-
-  PARTIAL: "#d97706",
-
-  GAP: "#dc2626",
-
-};
-
-function Dashboard({ token, syllabusId }) {
+function Dashboard({ token, syllabusId, jobId }) {
 
   const [report, setReport] = useState(null);
 
@@ -51,6 +40,8 @@ function Dashboard({ token, syllabusId }) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState("");
 
   useEffect(() => {
 
@@ -69,7 +60,14 @@ function Dashboard({ token, syllabusId }) {
         setLoading(false);
 
         return;
+      }
 
+      if (!jobId) {
+        setReport(null);
+        setRecommendations([]);
+        setError("Choose a job profile to view your analysis.");
+        setLoading(false);
+        return;
       }
 
       if (!token) {
@@ -89,6 +87,8 @@ function Dashboard({ token, syllabusId }) {
       setLoading(true);
 
       setError("");
+      setRecommendationsError("");
+      setRecommendationsLoading(false);
 
       const config = {
 
@@ -98,41 +98,43 @@ function Dashboard({ token, syllabusId }) {
 
       try {
 
-        const [reportResponse, recommendationResponse] =
-
-          await Promise.all([
-
-            axios.get(
-
-              `${API_BASE_URL}/api/matching/semantic/report/jobs/1/syllabus/${syllabusId}`,
-
-              config
-
-            ),
-
-            axios.get(
-
-              `${API_BASE_URL}/api/recommendations/jobs/1/syllabus/${syllabusId}`,
-
-              config
-
-            ),
-
-          ]);
+        const reportResponse = await axios.get(
+          `${API_BASE_URL}/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
+          config
+        );
 
         if (cancelled) return;
 
         setReport(reportResponse.data);
+        setLoading(false);
 
-        setRecommendations(
-
-          Array.isArray(recommendationResponse.data)
-
-            ? recommendationResponse.data
-
-            : []
-
-        );
+        setRecommendationsLoading(true);
+        try {
+          const recommendationResponse = await axios.get(
+            `${API_BASE_URL}/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
+            config
+          );
+          if (cancelled) return;
+          setRecommendations(
+            Array.isArray(recommendationResponse.data)
+              ? recommendationResponse.data
+              : []
+          );
+        } catch (recommendationError) {
+          if (cancelled) return;
+          console.error("Dashboard recommendations error:", {
+            status: recommendationError.response?.status,
+            url: recommendationError.config?.url,
+            message: recommendationError.message,
+          });
+          setRecommendationsError(
+            recommendationError.response?.status === 404
+              ? "No recommendations are available for this job and syllabus."
+              : "Recommendations are temporarily unavailable."
+          );
+        } finally {
+          if (!cancelled) setRecommendationsLoading(false);
+        }
 
       } catch (err) {
 
@@ -198,7 +200,7 @@ function Dashboard({ token, syllabusId }) {
 
     };
 
-  }, [syllabusId, token]);
+  }, [syllabusId, jobId, token]);
 
   if (loading) {
 
@@ -718,11 +720,17 @@ function Dashboard({ token, syllabusId }) {
 
         </div>
 
-        {recommendations.length === 0 ? (
+        {recommendationsLoading ? (
+          <div className="cp-empty">Generating AI recommendations...</div>
+        ) : recommendationsError ? (
+          <div className="cp-empty" role="alert">
+            {recommendationsError}
+          </div>
+        ) : recommendations.length === 0 ? (
 
           <div className="cp-empty">
 
-            No recommendations are available for this syllabus.
+            No recommendations are available for this job and syllabus.
 
           </div>
 
