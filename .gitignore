@@ -122,3 +122,6 @@ ai-service/.env
 
 # Local temporary diff output
 /cls
+
+# Claude discussion / memory workspace (local only)
+_claude/
