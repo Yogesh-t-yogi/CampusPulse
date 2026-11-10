@@ -277,6 +277,24 @@ A new database may not contain the demo syllabus or job records from your origin
 
 Press `Ctrl+C` in the frontend, backend, and Python service terminals. PostgreSQL can remain running as a Windows service.
 
+## 10. Run Everything with Docker (optional)
+
+Requires Docker Desktop. From the repository root:
+
+```powershell
+Copy-Item .env.example .env   # then edit .env: JWT_SECRET, GROQ_API_KEY, ADMIN_EMAILS
+docker compose up --build
+```
+
+Open http://localhost:5173. The database (with pgvector) is created automatically and
+kept in the `db-data` volume. Stop with `Ctrl+C`; remove data with `docker compose down -v`.
+
+## Admin Access
+
+Job catalog changes (CSV import, re-extracting skills of shared catalog jobs) need the
+ADMIN role. Set `ADMIN_EMAILS` (comma-separated) before starting the backend; those
+accounts become admins at startup or when they register.
+
 ## Security Notes
 
 - Never commit database passwords, Groq API keys, or private credentials.

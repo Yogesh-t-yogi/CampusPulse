@@ -1,0 +1,54 @@
+# Local run of the whole stack: docker compose up --build
+# Needs a .env file next to this one (see .env.example).
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: campuspulse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d campuspulse"]
+      interval: 5s
+      retries: 10
+
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "8000:8000"
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/campuspulse
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      EMBEDDING_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+    ports:
+      - "8081:8081"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8081
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  db-data:
