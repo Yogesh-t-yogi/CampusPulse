@@ -47,6 +47,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/jobs")
                     .hasRole("ADMIN")
 
+                .requestMatchers(HttpMethod.POST, "/api/job-catalog/import")
+                    .hasRole("ADMIN")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

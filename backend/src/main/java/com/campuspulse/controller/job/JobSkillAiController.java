@@ -29,8 +29,8 @@ public class JobSkillAiController {
     public Map<String, Object> extractSkills(
             @PathVariable Long jobId) {
 
-        Long userId = currentUserService.getCurrentUser().getId();
-        jobPostingService.requireAccessibleJob(jobId, userId);
+        jobPostingService.requireModifiableJob(
+                jobId, currentUserService.getCurrentUser());
         List<String> skills =
                 jobSkillAiService.extractSkills(jobId);
 

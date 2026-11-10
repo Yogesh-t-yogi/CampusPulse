@@ -33,7 +33,8 @@ public class JobSkillController {
             @PathVariable Long jobId,
             @RequestParam String skill) {
 
-        verifyJobOwnership(jobId);
+        jobPostingService.requireModifiableJob(
+                jobId, currentUserService.getCurrentUser());
         return jobSkillService.addSkill(jobId, skill);
     }
 
@@ -41,7 +42,7 @@ public class JobSkillController {
     public List<JobRequiredSkill> getSkills(
             @PathVariable Long jobId) {
 
-        verifyJobOwnership(jobId);
+        verifyJobAccess(jobId);
         return jobSkillService.getSkills(jobId);
     }
 
@@ -56,7 +57,7 @@ public class JobSkillController {
         return jobSkillService.getSkillsForJobs(accessibleJobIds);
     }
 
-    private void verifyJobOwnership(Long jobId) {
+    private void verifyJobAccess(Long jobId) {
         Long userId = currentUserService.getCurrentUser().getId();
         jobPostingService.requireAccessibleJob(jobId, userId);
     }

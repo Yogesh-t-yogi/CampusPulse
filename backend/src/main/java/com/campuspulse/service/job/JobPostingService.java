@@ -46,6 +46,22 @@ public class JobPostingService {
                 ));
     }
 
+    /**
+     * Jobs can be read by everyone who can access them, but only changed by
+     * their owner. Shared catalog jobs (no owner) can only be changed by admins.
+     */
+    public JobPosting requireModifiableJob(Long jobId, AppUser user) {
+        JobPosting job = requireAccessibleJob(jobId, user.getId());
+        boolean isAdmin = "ADMIN".equals(user.getRole());
+        Long ownerId = job.getOwner() == null ? null : job.getOwner().getId();
+        if (!isAdmin && !user.getId().equals(ownerId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only an admin can change shared catalog jobs.");
+        }
+        return job;
+    }
+
     @Transactional
     public JobPosting createCustomJob(
             CustomJobRequest request,

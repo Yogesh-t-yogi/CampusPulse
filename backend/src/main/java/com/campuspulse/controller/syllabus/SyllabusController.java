@@ -34,19 +34,6 @@ public class SyllabusController {
         this.currentUserService = currentUserService;
     }
 
-    // CREATE SYLLABUS
-    @PostMapping
-    public ResponseEntity<Syllabus> createSyllabus(
-            @RequestBody Syllabus syllabus) {
-
-        syllabus.setOwner(currentUserService.getCurrentUser());
-
-        Syllabus savedSyllabus =
-                syllabusService.createSyllabus(syllabus);
-
-        return ResponseEntity.ok(savedSyllabus);
-    }
-
     // GET ALL SYLLABI BELONGING TO THE CURRENT USER
     @GetMapping
     public ResponseEntity<List<Syllabus>> getAllSyllabi() {

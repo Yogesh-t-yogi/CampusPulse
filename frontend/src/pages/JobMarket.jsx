@@ -195,7 +195,10 @@ function JobMarket({
       if (err.response?.status === 401) {
         setError("Your session has expired. Please log in again.");
       } else if (err.response?.status === 403) {
-        setError("You are not authorized to extract skills for this job.");
+        setError(
+          err.response?.data?.message ||
+            "Only an admin can re-extract skills for shared catalog jobs."
+        );
       } else if (!err.response) {
         setError("Cannot connect to the backend. Check port 8081.");
       } else {
@@ -283,11 +286,13 @@ function JobMarket({
         message: err.message,
       });
       setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          (!err.response
-            ? "Cannot connect to the backend. Check port 8081."
-            : "Could not import this CSV dataset.")
+        err.response?.status === 403
+          ? "Only an admin can import jobs into the shared catalog."
+          : err.response?.data?.error ||
+            err.response?.data?.message ||
+            (!err.response
+              ? "Cannot connect to the backend. Check port 8081."
+              : "Could not import this CSV dataset.")
       );
     } finally {
       setImportingCsv(false);

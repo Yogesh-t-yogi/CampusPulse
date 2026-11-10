@@ -1,5 +1,6 @@
 package com.campuspulse.service.auth;
 
+import com.campuspulse.config.AdminBootstrap;
 import com.campuspulse.entity.user.AppUser;
 import com.campuspulse.repository.user.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,15 +12,18 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AdminBootstrap adminBootstrap;
 
     public AuthService(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            AdminBootstrap adminBootstrap) {
 
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.adminBootstrap = adminBootstrap;
     }
 
     public AppUser register(
@@ -40,7 +44,7 @@ public class AuthService {
         user.setPassword(
                 passwordEncoder.encode(password)
         );
-        user.setRole("USER");
+        user.setRole(adminBootstrap.isAdminEmail(email) ? "ADMIN" : "USER");
 
         return appUserRepository.save(user);
     }
