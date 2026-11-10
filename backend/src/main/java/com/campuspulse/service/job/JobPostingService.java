@@ -1,6 +1,7 @@
 package com.campuspulse.service.job;
 
 import com.campuspulse.dto.job.CustomJobRequest;
+import com.campuspulse.dto.job.JobForm;
 import com.campuspulse.entity.job.JobPosting;
 import com.campuspulse.entity.job.JobRequiredSkill;
 import com.campuspulse.entity.user.AppUser;
@@ -89,6 +90,45 @@ public class JobPostingService {
                 .toList();
         jobRequiredSkillRepository.saveAll(requiredSkills);
         return savedJob;
+    }
+
+    /** Edit title/company/location/description and replace the skill list. */
+    @Transactional
+    public JobPosting updateJob(Long jobId, AppUser user, JobForm form) {
+        JobPosting job = requireModifiableJob(jobId, user);
+        if (form.title() == null || form.title().isBlank()) {
+            throw new IllegalArgumentException("Job title is required.");
+        }
+        job.setTitle(form.title().trim());
+        job.setCompany(blankToNull(form.company()));
+        job.setLocation(blankToNull(form.location()));
+        job.setDescription(form.description() == null ? "" : form.description().trim());
+        JobPosting saved = jobPostingRepository.save(job);
+
+        if (form.skills() != null) {
+            jobRequiredSkillRepository.deleteAll(jobRequiredSkillRepository.findByJobPostingId(jobId));
+            List<JobRequiredSkill> skills = form.skills().stream()
+                    .map(skillAliasService::normalizeSkill)
+                    .filter(skillAliasService::isMeaningfulSkill)
+                    .distinct()
+                    .map(skill -> {
+                        JobRequiredSkill requiredSkill = new JobRequiredSkill();
+                        requiredSkill.setSkill(skill);
+                        requiredSkill.setJobPosting(saved);
+                        return requiredSkill;
+                    })
+                    .toList();
+            jobRequiredSkillRepository.saveAll(skills);
+        }
+        return saved;
+    }
+
+    /** Deletes the job and its skills; saved reports go with it (DB cascade). */
+    @Transactional
+    public void deleteJob(Long jobId, AppUser user) {
+        JobPosting job = requireModifiableJob(jobId, user);
+        jobRequiredSkillRepository.deleteAll(jobRequiredSkillRepository.findByJobPostingId(jobId));
+        jobPostingRepository.delete(job);
     }
 
     private String blankToNull(String value) {

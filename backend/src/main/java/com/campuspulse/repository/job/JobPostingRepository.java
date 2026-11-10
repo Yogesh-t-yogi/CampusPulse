@@ -32,4 +32,6 @@ public interface JobPostingRepository
     List<JobPosting> findBySourceOrderByCreatedAtDesc(String source);
 
     boolean existsBySourceAndTitle(String source, String title);
+
+    List<JobPosting> findAllByOwner_Id(Long ownerId);
 }

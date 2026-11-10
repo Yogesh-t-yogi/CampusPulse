@@ -4,6 +4,9 @@ import com.campuspulse.dto.job.CustomJobRequest;
 import com.campuspulse.entity.job.JobPosting;
 import com.campuspulse.repository.job.JobPostingRepository;
 import com.campuspulse.service.CurrentUserService;
+import com.campuspulse.dto.job.JobForm;
+import com.campuspulse.service.analysis.AnalysisResultService;
+import com.campuspulse.service.job.JobCatalogProvider;
 import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.job.JobSkillAiService;
 import org.springframework.http.ResponseEntity;
@@ -21,22 +24,44 @@ public class JobPostingController {
     private final JobPostingService jobPostingService;
     private final JobSkillAiService jobSkillAiService;
     private final CurrentUserService currentUserService;
+    private final JobCatalogProvider jobCatalogProvider;
+    private final AnalysisResultService analysisResultService;
 
     public JobPostingController(
             JobPostingRepository jobPostingRepository,
             JobPostingService jobPostingService,
             JobSkillAiService jobSkillAiService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            JobCatalogProvider jobCatalogProvider,
+            AnalysisResultService analysisResultService) {
         this.jobPostingRepository = jobPostingRepository;
         this.jobPostingService = jobPostingService;
         this.jobSkillAiService = jobSkillAiService;
         this.currentUserService = currentUserService;
+        this.jobCatalogProvider = jobCatalogProvider;
+        this.analysisResultService = analysisResultService;
     }
 
-    // Create a job posting
+    // ADMIN: add a shared catalog job by hand (SecurityConfig: POST /api/jobs is ADMIN only)
     @PostMapping
-    public JobPosting createJob(@RequestBody JobPosting jobPosting) {
-        return jobPostingRepository.save(jobPosting);
+    public JobPosting createJob(@RequestBody JobForm form) {
+        return jobCatalogProvider.createCatalogJob(
+                form.title(), form.company(), form.location(), form.description(), form.skills());
+    }
+
+    // Edit: own private jobs, or any job for admins
+    @PutMapping("/{id}")
+    public JobPosting updateJob(@PathVariable Long id, @RequestBody JobForm form) {
+        JobPosting job = jobPostingService.updateJob(id, currentUserService.getCurrentUser(), form);
+        analysisResultService.clearForJob(id);
+        return job;
+    }
+
+    // Delete: own private jobs, or any job for admins
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteJob(@PathVariable Long id) {
+        jobPostingService.deleteJob(id, currentUserService.getCurrentUser());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/custom")

@@ -37,15 +37,25 @@ public class SyllabusController {
         this.currentUserService = currentUserService;
     }
 
-    // GET ALL SYLLABI BELONGING TO THE CURRENT USER
+    // LIST THE CURRENT USER'S SYLLABI (summary: status, subject and topic counts)
     @GetMapping
-    public ResponseEntity<List<Syllabus>> getAllSyllabi() {
+    public List<Map<String, Object>> getAllSyllabi() {
+        return syllabusService.listSummaries(currentUserService.getCurrentUser().getId());
+    }
 
-        Long userId = currentUserService.getCurrentUser().getId();
+    // RENAME
+    @PutMapping("/{id}")
+    public Map<String, Object> rename(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        Syllabus syllabus = syllabusService.rename(
+                id, currentUserService.getCurrentUser().getId(), body.get("name"));
+        return Map.of("id", syllabus.getId(), "name", syllabus.getName());
+    }
 
-        return ResponseEntity.ok(
-                syllabusService.getAllSyllabi(userId)
-        );
+    // DELETE (with its curriculum, vectors and saved reports)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        syllabusService.delete(id, currentUserService.getCurrentUser().getId());
+        return ResponseEntity.noContent().build();
     }
 
     // GET SYLLABUS BY ID, ONLY IF OWNED BY CURRENT USER
