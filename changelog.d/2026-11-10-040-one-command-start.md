@@ -21,7 +21,7 @@ Owner ran three terminals and three commands every time.
 
 ## How to test
 1. `Copy-Item .env.example .env`, fill DB_PASSWORD, GROQ_API_KEY, JWT_SECRET (32+ chars),
-   DEMO_USERS_PASSWORD=Password@123 for demo accounts.
+   DEMO_USERS_PASSWORD=<your demo password> for demo accounts.
 2. Stop servers running elsewhere (VS Code backend, old terminals) — ports must be free.
 3. Double-click `start-dev.cmd` → 3 windows → browser opens when ready.
 
