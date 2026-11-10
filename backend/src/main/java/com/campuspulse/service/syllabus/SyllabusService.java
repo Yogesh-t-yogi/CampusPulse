@@ -67,6 +67,7 @@ public class SyllabusService {
                        s.processing_status AS "processingStatus",
                        s.processing_message AS "processingMessage",
                        s.visibility, s.semester,
+                       s.version_no AS "versionNo", s.previous_version_id AS "previousVersionId",
                        s.user_id AS "ownerId", owner.name AS "ownerName",
                        s.department_id AS "departmentId", d.name AS "departmentName",
                        s.program_id AS "programId", p.name AS "programName",

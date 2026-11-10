@@ -510,3 +510,5 @@
 .cp-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--cp-text-2); line-height: 1.5; }
 
 .cp-bands { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; color: var(--cp-text); font-size: 14px; }
+
+.ui-stack { display: flex; flex-direction: column; gap: 16px; }

@@ -1,12 +1,28 @@
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import api from "../apiClient";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { processSyllabus } from "../syllabusProcessing";
-import { Card, Field, Page, PageHeader } from "../ui";
+import { Alert, Button, Card, Field, Page, PageHeader } from "../ui";
 
 function SyllabusUpload({ token, onUploaded, currentUser }) {
   const isStudent = currentUser?.role === "STUDENT";
+  // ?revisionOf=<id>: this upload is a new version of that syllabus (keeps its name, program, semester).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const revisionOf = searchParams.get("revisionOf") || "";
+  const [revisionName, setRevisionName] = useState("");
+  useEffect(() => {
+    if (!revisionOf) return;
+    let cancelled = false;
+    api
+      .get(`/api/syllabus/${revisionOf}`)
+      .then(({ data }) => !cancelled && setRevisionName(data?.name || `#${revisionOf}`))
+      .catch(() => !cancelled && setRevisionName(`#${revisionOf}`));
+    return () => {
+      cancelled = true;
+    };
+  }, [revisionOf]);
   const [programs, setPrograms] = useState([]);
   const [programId, setProgramId] = useState("");
   const [semester, setSemester] = useState("");
@@ -93,6 +109,7 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
       formData.append("file", file);
       if (programId) formData.append("programId", programId);
       if (semester) formData.append("semester", semester);
+      if (revisionOf) formData.append("revisionOf", revisionOf);
 
       const uploadResponse = await api.post(
         `/api/syllabus/upload`,
@@ -195,6 +212,16 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
         title="Upload syllabus"
         description="Upload a syllabus PDF. CampusPulse extracts its subjects, units and topics with AI and indexes them for skill matching."
       />
+
+      {revisionOf && (
+        <Alert tone="info">
+          New version of <strong>{revisionName || "…"}</strong>. It keeps that syllabus's name, program and
+          semester; the old version stays so you can compare them in the report's History tab.{" "}
+          <Button variant="ghost" onClick={() => setSearchParams({}, { replace: true })}>
+            Upload as a new syllabus instead
+          </Button>
+        </Alert>
+      )}
 
       <div className="ui-grid ui-grid-main">
       <div className="upload-card cp-upload-card">

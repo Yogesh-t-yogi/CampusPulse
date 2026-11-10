@@ -55,6 +55,17 @@ public class Syllabus {
     @Column(name = "program_id")
     private Long programId;
 
+    @Column(name = "previous_version_id")
+    private Long previousVersionId;
+
+    @Column(name = "version_no", nullable = false)
+    private Integer versionNo = 1;
+
+    public Long getPreviousVersionId() { return previousVersionId; }
+    public void setPreviousVersionId(Long previousVersionId) { this.previousVersionId = previousVersionId; }
+    public Integer getVersionNo() { return versionNo; }
+    public void setVersionNo(Integer versionNo) { this.versionNo = versionNo; }
+
     @Column(name = "semester")
     private Integer semester;
 

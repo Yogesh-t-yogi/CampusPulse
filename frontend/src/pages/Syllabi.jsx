@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpen, CheckCircle2, FileUp, Lock, Pencil, RefreshCw, Trash2, Users as UsersIcon } from "lucide-react";
+import { useNavigate } from "react-router";
+import { BookOpen, CheckCircle2, FilePlus2, FileUp, Lock, Pencil, RefreshCw, Trash2, Users as UsersIcon } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import {
   Badge,
@@ -31,6 +32,7 @@ function statusOf(item) {
 // Syllabi the user can read: own + shared with their department / program.
 // Change actions only where item.canManage (owner, HOD of the department, college admin).
 function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, setActivePage, currentUser }) {
+  const navigate = useNavigate();
   const toast = useToast();
   const isStudent = currentUser?.role === "STUDENT";
   const [query, setQuery] = useState("");
@@ -139,6 +141,12 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
                 <Badge tone="accent">In use</Badge>
               </>
             )}
+            {Number(item.versionNo || 1) > 1 && (
+              <>
+                {" "}
+                <Badge tone="info">v{item.versionNo}</Badge>
+              </>
+            )}
           </strong>
           <small>{item.mine ? "Uploaded by you" : `By ${item.ownerName || "someone"}`}</small>
         </span>
@@ -195,6 +203,11 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
           {item.canManage && (
             <>
               <IconButton icon={Pencil} label="Edit details" onClick={() => openEditor(item)} />
+              <IconButton
+                icon={FilePlus2}
+                label="Upload new version"
+                onClick={() => navigate(`/upload?revisionOf=${item.id}`)}
+              />
               <IconButton
                 icon={RefreshCw}
                 label="Re-process with AI"

@@ -98,7 +98,8 @@ public class SyllabusController {
     public ResponseEntity<Map<String, Object>> uploadPdf(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "programId", required = false) Long programId,
-            @RequestParam(value = "semester", required = false) Long semester) {
+            @RequestParam(value = "semester", required = false) Long semester,
+            @RequestParam(value = "revisionOf", required = false) Long revisionOf) {
 
         try {
             log.info("Syllabus upload started, size {} bytes", file.getSize());
@@ -135,6 +136,17 @@ public class SyllabusController {
                     ? owner.getProgramId() : programId;
             syllabusService.applyProgram(syllabus, chosenProgram);
             syllabus.setSemester(syllabusService.validSemester(syllabus, semester));
+            if (revisionOf != null) {
+                // New version of an existing syllabus: same name, program, semester, sharing.
+                Syllabus previous = syllabusService.requireManageable(revisionOf);
+                syllabus.setName(previous.getName());
+                syllabus.setDepartmentId(previous.getDepartmentId());
+                syllabus.setProgramId(previous.getProgramId());
+                syllabus.setSemester(previous.getSemester());
+                syllabus.setVisibility(previous.getVisibility());
+                syllabus.setPreviousVersionId(previous.getId());
+                syllabus.setVersionNo((previous.getVersionNo() == null ? 1 : previous.getVersionNo()) + 1);
+            }
 
             // Step 3: Save syllabus
             Syllabus savedSyllabus =

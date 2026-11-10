@@ -8,6 +8,7 @@ import GapAnalysis from "./GapAnalysis";
 import AIRecommendations from "./AIRecommendations";
 import CompareJobs from "./CompareJobs";
 import OutcomesReport from "./OutcomesReport";
+import ReportHistory from "./ReportHistory";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -15,6 +16,7 @@ const TABS = [
   { id: "recommendations", label: "Recommendations" },
   { id: "outcomes", label: "Outcomes (CO/PO)" },
   { id: "compare", label: "Compare jobs" },
+  { id: "history", label: "History" },
 ];
 
 // One report for the selected syllabus + job. Results are saved on the server;
@@ -128,6 +130,7 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
         {tab === "outcomes" && (
           <OutcomesReport key={`co-${version}`} syllabusId={syllabusId} jobId={jobId} />
         )}
+        {tab === "history" && <ReportHistory key={`h-${version}`} syllabusId={syllabusId} jobId={jobId} />}
         {tab === "compare" && (
           <CompareJobs syllabusId={syllabusId} jobs={jobs} currentJobId={jobId} />
         )}

@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 public class SchemaVersionCheck implements ApplicationRunner {
 
     /** Highest migration in src/main/resources/db/migration. Update with each new V*.sql. */
-    static final int EXPECTED_VERSION = 7;
+    static final int EXPECTED_VERSION = 8;
 
     private static final Logger log = LoggerFactory.getLogger(SchemaVersionCheck.class);
 

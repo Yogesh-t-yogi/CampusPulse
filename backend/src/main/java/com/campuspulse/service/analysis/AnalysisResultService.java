@@ -68,6 +68,7 @@ public class AnalysisResultService {
                         algo_version = EXCLUDED.algo_version,
                         updated_at = now()
                 """, syllabusId, jobId, toJson(report), ALGO_VERSION);
+        saveSnapshot(report, syllabusId, jobId);
         return report;
     }
 
@@ -91,6 +92,21 @@ public class AnalysisResultService {
                 WHERE syllabus_id = ? AND job_id = ?
                 """, toJson(recommendations), syllabusId, jobId);
         return recommendations;
+    }
+
+    /** History row for this run (5.3). Never fails the report itself. */
+    private void saveSnapshot(SemanticGapReport report, Long syllabusId, Long jobId) {
+        try {
+            jdbcTemplate.update("""
+                    INSERT INTO report_snapshot (syllabus_id, job_id, coverage, total_skills, matched_skills,
+                        partial_skills, gap_skills, algo_version, report_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, syllabusId, jobId, report.getCoveragePercentage(), report.getTotalSkills(),
+                    report.getMatchedSkills(), report.getPartialSkills(), report.getGapSkills(),
+                    ALGO_VERSION, toJson(report));
+        } catch (RuntimeException e) {
+            log.warn("Could not save report history for job {} syllabus {}: {}", jobId, syllabusId, e.getMessage());
+        }
     }
 
     public void clearForSyllabus(Long syllabusId) {
