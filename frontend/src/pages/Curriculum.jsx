@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react";
 import api from "../apiClient";
 import {
+  SubjectEditor,
+  TopicEditor,
+  UnitEditor,
+} from "../components/CurriculumEditors";
+import {
   getProcessingStatus,
   processSyllabus as runProcessing,
   waitForProcessing,
@@ -17,6 +22,8 @@ function Curriculum({ syllabusId }) {
   const [processing, setProcessing] = useState(false);
   const [processingError, setProcessingError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [editMode, setEditMode] = useState(false);
+  const reload = () => setReloadVersion((version) => version + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,6 +168,14 @@ function Curriculum({ syllabusId }) {
         0
       ),
     0
+  );
+
+  // Every unit of the syllabus, for "Move to unit" in the topic editor.
+  const allUnits = subjects.flatMap((subject) =>
+    (subject.units || []).map((unit, index) => ({
+      id: unit.id,
+      label: `${subject.name} · Unit ${unit.unitNumber ?? index + 1}${unit.name ? ` — ${unit.name}` : ""}`,
+    }))
   );
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -418,6 +433,14 @@ function Curriculum({ syllabusId }) {
             >
               Collapse all
             </button>
+            <button
+              type="button"
+              className={editMode ? "cp-button cp-button-primary" : "cp-button"}
+              onClick={() => setEditMode((value) => !value)}
+              aria-pressed={editMode}
+            >
+              {editMode ? "Done editing" : "Edit curriculum"}
+            </button>
           </div>
         </div>
 
@@ -461,6 +484,14 @@ function Curriculum({ syllabusId }) {
                     </span>
                   </button>
 
+                  {editMode && (
+                    <SubjectEditor
+                      syllabusId={syllabusId}
+                      subject={subject}
+                      onChanged={reload}
+                    />
+                  )}
+
                   {subjectOpen && (
                     <div className="cc-unit-list">
                       {(subject.units || []).map((unit, unitIndex) => {
@@ -493,6 +524,14 @@ function Curriculum({ syllabusId }) {
                               </span>
                             </button>
 
+                            {editMode && (
+                              <UnitEditor
+                                syllabusId={syllabusId}
+                                unit={unit}
+                                onChanged={reload}
+                              />
+                            )}
+
                             {unitOpen && (
                               <div className="cc-topic-list">
                                 {(unit.topics || []).length === 0 ? (
@@ -510,6 +549,16 @@ function Curriculum({ syllabusId }) {
                                         <strong>{topic.name}</strong>
                                         {topic.description && (
                                           <p>{topic.description}</p>
+                                        )}
+                                        {editMode && (
+                                          <TopicEditor
+                                            syllabusId={syllabusId}
+                                            topic={topic}
+                                            units={allUnits.filter(
+                                              (item) => item.id !== unit.id
+                                            )}
+                                            onChanged={reload}
+                                          />
                                         )}
                                       </div>
                                     </div>

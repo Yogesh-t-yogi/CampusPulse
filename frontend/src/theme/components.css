@@ -238,3 +238,76 @@
   padding: 16px;
   color: var(--cp-text-muted);
 }
+
+/* Curriculum editor */
+.cp-edit-bar {
+  margin: 8px 0 8px 16px;
+}
+
+.cp-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.cp-edit-actions .cp-button {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.cp-edit-actions .cp-icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.cp-edit-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-page);
+}
+
+.cp-edit-form-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.cp-edit-form-row .cp-edit-narrow {
+  max-width: 120px;
+}
+
+.cp-edit-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cp-text-2);
+}
+
+.cp-edit-form input,
+.cp-edit-form textarea,
+.cp-edit-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  color: var(--cp-text);
+  font: 400 14px var(--cp-font);
+}
+
+.cp-edit-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.cp-edit-error {
+  margin: 4px 0 0;
+  color: var(--cp-gap);
+  font-size: 13px;
+}

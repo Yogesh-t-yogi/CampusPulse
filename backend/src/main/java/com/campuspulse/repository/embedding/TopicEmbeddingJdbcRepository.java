@@ -25,6 +25,18 @@ public class TopicEmbeddingJdbcRepository {
                 """, syllabusId);
     }
 
+    public void deleteByTopicId(Long topicId) {
+        jdbcTemplate.update("DELETE FROM topic_embedding WHERE topic_id = ?", topicId);
+    }
+
+    public void deleteByUnitId(Long unitId) {
+        jdbcTemplate.update("""
+                DELETE FROM topic_embedding te
+                USING topic t
+                WHERE te.topic_id = t.id AND t.unit_id = ?
+                """, unitId);
+    }
+
     public void saveEmbedding(
             Long topicId,
             String embedding,
