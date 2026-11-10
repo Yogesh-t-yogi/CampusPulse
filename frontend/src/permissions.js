@@ -3,6 +3,8 @@
 const ALL = ["ADMIN", "FACULTY", "STUDENT"];
 
 const PAGE_ROLES = {
+  Home: ALL,
+  Syllabi: ALL,
   "Upload Syllabus": ALL,
   Curriculum: ALL,
   "Job Market": ALL,

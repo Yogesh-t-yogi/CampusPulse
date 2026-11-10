@@ -4,11 +4,15 @@ import { useLocation, useNavigate } from "react-router";
 import api, { SESSION_EXPIRED_EVENT } from "./apiClient";
 
 import Sidebar from "./components/Sidebar";
+import Topbar from "./components/Topbar";
+import Home from "./pages/Home";
+import Syllabi from "./pages/Syllabi";
+import JobCatalog from "./pages/JobCatalog";
 import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
 import Report from "./pages/Report";
 import Users from "./pages/Users";
-import { canSeePage, roleLabel } from "./permissions";
+import { canSeePage } from "./permissions";
 import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -16,11 +20,16 @@ import WorkflowSteps from "./components/WorkflowSteps";
 import "./App.css";
 import "./FeatureAdditions.css";
 import "./theme/components.css";
-import ThemeControls from "./components/ThemeControls";
+import "./ui/ui.css";
+import "./components/shell.css";
+import { Alert, EmptyState, Page } from "./ui";
+import { ShieldAlert } from "lucide-react";
 import { setMode } from "./theme/theme";
 
 // Each page has its own URL, so refresh and the back button work.
 const PAGE_PATHS = {
+  Home: "/home",
+  Syllabi: "/syllabi",
   "Upload Syllabus": "/upload",
   Curriculum: "/curriculum",
   "Job Market": "/jobs",
@@ -30,6 +39,16 @@ const PAGE_PATHS = {
   "Job catalog": "/catalog",
   Users: "/users",
 };
+
+// Header title per page.
+const PAGE_TITLES = {
+  "Upload Syllabus": "Upload syllabus",
+  Curriculum: "Review curriculum",
+  "Job Market": "Choose job",
+};
+
+// Pages that show the analysis step bar.
+const WORKFLOW_PAGES = new Set(["Upload Syllabus", "Curriculum", "Job Market", "Report"]);
 
 // Old page URLs now open the matching Report tab.
 const LEGACY_PATHS = {
@@ -70,11 +89,7 @@ function getSyllabusId(payload) {
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const defaultPage =
-    sessionStorage.getItem("campuspulse_syllabus_id") &&
-    sessionStorage.getItem("campuspulse_job_id")
-      ? "Report"
-      : "Upload Syllabus";
+  const defaultPage = "Home";
   const activePage = pageFromPath(location.pathname) || defaultPage;
   const setActivePage = useCallback(
     (page) => navigate(PAGE_PATHS[page] || "/upload"),
@@ -102,7 +117,7 @@ function App() {
 
   const [syllabiLoading, setSyllabiLoading] = useState(false);
   const [syllabiError, setSyllabiError] = useState("");
-  const [jobsLoading, setJobsLoading] = useState(false);
+  const [, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
 
@@ -116,7 +131,7 @@ function App() {
     setWorkflowNotice("");
     setSelectedSyllabusId("");
     setSelectedJobId("");
-    setActivePage("Upload Syllabus");
+    setActivePage("Home");
   };
 
   const handleLogout = useCallback(() => {
@@ -132,7 +147,7 @@ function App() {
     setSelectedSyllabusId("");
     setSelectedJobId("");
     setAuthPage("login");
-    setActivePage("Upload Syllabus");
+    setActivePage("Home");
   }, [setActivePage]);
 
   // Any API call that gets HTTP 401 ends the session in one place.
@@ -319,6 +334,14 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [refreshSyllabi, refreshJobs]);
 
+  const selectSyllabus = (id) => {
+    const value = id ? String(id) : "";
+    setSelectedSyllabusId(value);
+    setWorkflowNotice("");
+    if (value) sessionStorage.setItem("campuspulse_syllabus_id", value);
+    else sessionStorage.removeItem("campuspulse_syllabus_id");
+  };
+
   const handleSyllabusChange = (event) => {
     const id = event.target.value;
 
@@ -399,18 +422,42 @@ function App() {
     // Role check (the backend enforces the same rules).
     if (currentUser && !canSeePage(role, activePage)) {
       return (
-        <main className="page-content">
-          <div className="cp-report-header">
-            <div>
-              <h1>Not available for your role</h1>
-              <p>This page is for other roles. Use the menu on the left.</p>
-            </div>
-          </div>
-        </main>
+        <Page>
+          <EmptyState
+            icon={ShieldAlert}
+            title="Not available for your role"
+            description="This page belongs to another role. Use the menu on the left."
+          />
+        </Page>
       );
     }
 
     switch (activePage) {
+      case "Home":
+        return (
+          <Home
+            user={currentUser}
+            syllabi={syllabi}
+            jobs={jobs}
+            selectedSyllabusId={selectedSyllabusId}
+            selectedJobId={selectedJobId}
+            setActivePage={setActivePage}
+          />
+        );
+
+      case "Syllabi":
+        return (
+          <Syllabi
+            syllabi={syllabi}
+            loading={syllabiLoading}
+            error={syllabiError}
+            selectedSyllabusId={selectedSyllabusId}
+            onSelect={selectSyllabus}
+            onChanged={() => refreshSyllabi()}
+            setActivePage={setActivePage}
+          />
+        );
+
       case "Upload Syllabus":
         return (
           <SyllabusUpload
@@ -469,17 +516,7 @@ function App() {
         return <Users currentUserId={currentUser?.id} />;
 
       case "Job catalog":
-        return (
-          <JobMarket
-            key="catalog"
-            section="catalog"
-            isAdmin={isAdmin}
-            selectedJobId={selectedJobId}
-            hasSyllabus={Boolean(selectedSyllabusId)}
-            onJobSelected={handleJobSelected}
-            onCatalogImported={refreshJobs}
-          />
-        );
+        return <JobCatalog onChanged={refreshJobs} />;
 
       case "Report":
       default:
@@ -498,19 +535,10 @@ function App() {
     }
   };
 
-  const safeSyllabi = Array.isArray(syllabi) ? syllabi : [];
-  const recentJobOptions = jobs.slice(0, 200);
-  const selectedJob = jobs.find(
-    (job) => String(job.id) === String(selectedJobId)
-  );
-  const jobSelectorOptions =
-    selectedJob &&
-    !recentJobOptions.some((job) => String(job.id) === String(selectedJobId))
-      ? [selectedJob, ...recentJobOptions]
-      : recentJobOptions;
+  const pageTitle = PAGE_TITLES[activePage] || activePage;
 
   return (
-    <div className="app-layout">
+    <div className="shell">
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
@@ -519,128 +547,36 @@ function App() {
         role={role}
       />
 
-      <main className="main-content">
-        <WorkflowSteps
-          activePage={activePage}
-          setActivePage={setActivePage}
-          hasSyllabus={Boolean(selectedSyllabusId)}
-          hasJob={Boolean(selectedJobId)}
+      <div className="shell-main">
+        <Topbar
+          title={pageTitle}
+          user={currentUser}
+          onLogout={handleLogout}
+          syllabi={Array.isArray(syllabi) ? syllabi : []}
+          selectedSyllabusId={selectedSyllabusId}
+          onSyllabusChange={handleSyllabusChange}
+          jobs={jobs}
+          selectedJobId={selectedJobId}
+          onJobChange={handleJobChange}
         />
-        {workflowNotice && (
-          <p className="error-message" role="status">
-            {workflowNotice}
-          </p>
+
+        {WORKFLOW_PAGES.has(activePage) && (
+          <WorkflowSteps
+            activePage={activePage}
+            setActivePage={setActivePage}
+            hasSyllabus={Boolean(selectedSyllabusId)}
+            hasJob={Boolean(selectedJobId)}
+          />
         )}
-        <div
-          className="app-topbar"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "16px",
-            flexWrap: "wrap",
-            padding: "12px 20px",
-          }}
-        >
-          <div className="cp-selection-control">
-            <label htmlFor="syllabus-selector">
-              <strong>Selected syllabus: </strong>
-            </label>
 
-            <select
-              id="syllabus-selector"
-              value={selectedSyllabusId}
-              onChange={handleSyllabusChange}
-              disabled={
-                syllabiLoading || safeSyllabi.length === 0
-              }
-            >
-              <option value="">
-                {syllabiLoading
-                  ? "Loading syllabi..."
-                  : "Select a syllabus"}
-              </option>
-
-              {safeSyllabi.map((syllabus) => (
-                <option
-                  key={syllabus.id}
-                  value={String(syllabus.id)}
-                >
-                  {syllabus.name ||
-                    syllabus.fileName ||
-                    `Syllabus ${syllabus.id}`}
-                  {syllabus.createdAt
-                    ? ` · ${new Date(syllabus.createdAt).toLocaleDateString()}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-
-            {syllabiError && (
-              <p className="error-message" role="alert">
-                {syllabiError}
-              </p>
-            )}
-
-            {!syllabiLoading &&
-              !syllabiError &&
-              safeSyllabi.length === 0 && (
-                <p>No syllabi found. Upload a syllabus first.</p>
-              )}
+        {(workflowNotice || syllabiError || jobsError) && (
+          <div className="shell-notice">
+            <Alert tone="warning">{workflowNotice || syllabiError || jobsError}</Alert>
           </div>
-
-          <div className="cp-selection-control">
-            <label htmlFor="job-selector">
-              <strong>Job profile: </strong>
-            </label>
-            <select
-              id="job-selector"
-              value={selectedJobId}
-              onChange={handleJobChange}
-              disabled={
-                jobsLoading ||
-                jobs.length === 0 ||
-                !selectedSyllabusId
-              }
-            >
-              <option value="">
-                {jobsLoading ? "Loading job profiles..." : "Select a job"}
-              </option>
-              {jobSelectorOptions.map((job) => (
-                <option key={job.id} value={String(job.id)}>
-                  {job.title || `Job ${job.id}`}
-                  {job.company ? ` — ${job.company}` : ""}
-                </option>
-              ))}
-            </select>
-            {jobs.length > 200 && (
-              <p>Showing recent profiles; search the full catalog in Job Market.</p>
-            )}
-            {jobsError && <p className="error-message" role="alert">{jobsError}</p>}
-            {!jobsLoading && !jobsError && jobs.length === 0 && (
-              <p>No job profiles yet. Choose or paste a description in Job Market.</p>
-            )}
-          </div>
-
-          {currentUser && (
-            <span className="cp-role-badge" title={currentUser.email}>
-              {currentUser.name} · {roleLabel(role)}
-            </span>
-          )}
-
-          <ThemeControls allowModeSwitch={false} />
-
-          <button
-            type="button"
-            className="cp-button cp-button-danger"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
+        )}
 
         {renderPage()}
-      </main>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import "./index.css";
 import { applyStoredPreferences } from "./theme/theme";
 import { BrowserRouter } from "react-router";
 import App from "./App.jsx";
+import { ToastProvider } from "./ui";
 
 
 applyStoredPreferences();
@@ -12,7 +13,9 @@ applyStoredPreferences();
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </BrowserRouter>
   </StrictMode>
 );
