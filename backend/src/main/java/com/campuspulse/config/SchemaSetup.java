@@ -42,5 +42,8 @@ public class SchemaSetup implements ApplicationRunner {
                     UNIQUE (syllabus_id, job_id)
                 )
                 """);
+        // Which matching rules produced a saved result; older ones are recomputed.
+        jdbcTemplate.execute(
+                "ALTER TABLE analysis_result ADD COLUMN IF NOT EXISTS algo_version INT NOT NULL DEFAULT 1");
     }
 }

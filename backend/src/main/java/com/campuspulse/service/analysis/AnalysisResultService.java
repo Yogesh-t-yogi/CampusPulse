@@ -23,6 +23,9 @@ import java.util.List;
 @Service
 public class AnalysisResultService {
 
+    /** Bump when matching rules change so saved results are recomputed. 2 = hybrid matching. */
+    static final int ALGO_VERSION = 2;
+
     private static final Logger log = LoggerFactory.getLogger(AnalysisResultService.class);
 
     private final JdbcTemplate jdbcTemplate;
@@ -56,13 +59,15 @@ public class AnalysisResultService {
         SemanticGapReport report = semanticMatchingService.generateGapReport(jobId, syllabusId);
         // A new report makes old recommendations stale, so they are cleared.
         jdbcTemplate.update("""
-                INSERT INTO analysis_result (syllabus_id, job_id, report_json, recommendations_json, updated_at)
-                VALUES (?, ?, ?, NULL, now())
+                INSERT INTO analysis_result
+                    (syllabus_id, job_id, report_json, recommendations_json, algo_version, updated_at)
+                VALUES (?, ?, ?, NULL, ?, now())
                 ON CONFLICT (syllabus_id, job_id) DO UPDATE
                     SET report_json = EXCLUDED.report_json,
                         recommendations_json = NULL,
+                        algo_version = EXCLUDED.algo_version,
                         updated_at = now()
-                """, syllabusId, jobId, toJson(report));
+                """, syllabusId, jobId, toJson(report), ALGO_VERSION);
         return report;
     }
 
@@ -98,8 +103,9 @@ public class AnalysisResultService {
 
     private String readColumn(String column, Long jobId, Long syllabusId) {
         List<String> rows = jdbcTemplate.queryForList(
-                "SELECT " + column + " FROM analysis_result WHERE syllabus_id = ? AND job_id = ?",
-                String.class, syllabusId, jobId);
+                "SELECT " + column + " FROM analysis_result"
+                        + " WHERE syllabus_id = ? AND job_id = ? AND algo_version = ?",
+                String.class, syllabusId, jobId, ALGO_VERSION);
         return rows.isEmpty() ? null : rows.get(0);
     }
 

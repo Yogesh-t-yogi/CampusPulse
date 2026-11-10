@@ -329,7 +329,9 @@ function GapAnalysis({ syllabusId, jobId, token, embedded = false }) {
                     </strong>
                     {item.topic ? (
                       <span className="cg-topic-note">
-                        Topic ID: {item.topicId ?? "—"}
+                        {item.matchedBy === "KEYWORD"
+                          ? "Skill is named in this topic"
+                          : "Closest topic by meaning"}
                       </span>
                     ) : (
                       <span className="cg-topic-note">
