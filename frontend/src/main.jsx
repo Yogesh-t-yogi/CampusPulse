@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import "./index.css";
 import { applyStoredPreferences } from "./theme/theme";
+import { BrowserRouter } from "react-router";
 import App from "./App.jsx";
 
 
@@ -10,6 +11,8 @@ applyStoredPreferences();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>
 );

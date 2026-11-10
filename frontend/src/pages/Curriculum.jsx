@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from "../api";
+import api from "../apiClient";
 import {
   getProcessingStatus,
   processSyllabus as runProcessing,
@@ -47,8 +46,8 @@ function Curriculum({ syllabusId }) {
       setLoading(true);
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/syllabus/${syllabusId}/full`,
+        const response = await api.get(
+          `/api/syllabus/${syllabusId}/full`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

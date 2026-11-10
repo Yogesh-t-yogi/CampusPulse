@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import { useLocation, useNavigate } from "react-router";
+import api, { SESSION_EXPIRED_EVENT } from "./apiClient";
 
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -12,11 +13,27 @@ import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import WorkflowSteps from "./components/WorkflowSteps";
-import { API_BASE_URL } from "./api";
 import "./App.css";
 import "./FeatureAdditions.css";
 import "./theme/components.css";
 import ThemeControls from "./components/ThemeControls";
+
+// Each page has its own URL, so refresh and the back button work.
+const PAGE_PATHS = {
+  Dashboard: "/dashboard",
+  "Upload Syllabus": "/upload",
+  Curriculum: "/curriculum",
+  "Job Market": "/jobs",
+  "Gap Analysis": "/gap-analysis",
+  "AI Recommendations": "/recommendations",
+};
+
+function pageFromPath(pathname) {
+  const match = Object.entries(PAGE_PATHS).find(
+    ([, path]) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+  return match ? match[0] : null;
+}
 
 function getSyllabusId(payload) {
   if (!payload || typeof payload !== "object") return "";
@@ -41,12 +58,19 @@ function getSyllabusId(payload) {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState(() =>
+  const location = useLocation();
+  const navigate = useNavigate();
+  const defaultPage =
     sessionStorage.getItem("campuspulse_syllabus_id") &&
     sessionStorage.getItem("campuspulse_job_id")
       ? "Dashboard"
-      : "Upload Syllabus"
+      : "Upload Syllabus";
+  const activePage = pageFromPath(location.pathname) || defaultPage;
+  const setActivePage = useCallback(
+    (page) => navigate(PAGE_PATHS[page] || "/upload"),
+    [navigate]
   );
+  const [sessionNotice, setSessionNotice] = useState("");
 
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
@@ -75,13 +99,14 @@ function App() {
     sessionStorage.removeItem("campuspulse_job_id");
 
     setToken(jwtToken);
+    setSessionNotice("");
     setWorkflowNotice("");
     setSelectedSyllabusId("");
     setSelectedJobId("");
     setActivePage("Upload Syllabus");
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     sessionStorage.removeItem("campuspulse_token");
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
@@ -94,7 +119,25 @@ function App() {
     setSelectedJobId("");
     setAuthPage("login");
     setActivePage("Upload Syllabus");
-  };
+  }, [setActivePage]);
+
+  // Any API call that gets HTTP 401 ends the session in one place.
+  useEffect(() => {
+    const onExpired = () => {
+      if (!sessionStorage.getItem("campuspulse_token")) return;
+      handleLogout();
+      setSessionNotice("Your session expired. Sign in again.");
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [handleLogout]);
+
+  // Bare "/" or unknown paths go to the default page.
+  useEffect(() => {
+    if (token && !pageFromPath(location.pathname)) {
+      navigate(PAGE_PATHS[defaultPage], { replace: true });
+    }
+  }, [token, location.pathname, navigate, defaultPage]);
 
   // Fetch the logged-in user's syllabi.
   // After upload, prefer the newly created syllabus ID.
@@ -111,8 +154,8 @@ function App() {
       setSyllabiError("");
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/syllabus`,
+        const response = await api.get(
+          `/api/syllabus`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -193,7 +236,7 @@ function App() {
     setJobsError("");
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/jobs`, {
+      const response = await api.get(`/api/jobs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const userJobs = Array.isArray(response.data) ? response.data : [];
@@ -306,6 +349,7 @@ function App() {
 
     return (
       <Login
+        notice={sessionNotice}
         onLogin={handleLogin}
         onShowRegister={() => setAuthPage("register")}
       />

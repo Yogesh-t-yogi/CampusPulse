@@ -1,12 +1,11 @@
-import axios from "axios";
-import { API_BASE_URL } from "./api";
+import api from "./apiClient";
 
 const POLL_MS = 3000;
 const MAX_WAIT_MS = 15 * 60 * 1000;
 
 export function getProcessingStatus(syllabusId, token) {
-  return axios
-    .get(`${API_BASE_URL}/api/ai/syllabus/${syllabusId}/status`, {
+  return api
+    .get(`/api/ai/syllabus/${syllabusId}/status`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     .then((response) => response.data);
@@ -37,8 +36,8 @@ export async function waitForProcessing(syllabusId, token, onProgress) {
 
 // Starts background processing, then waits for it to finish.
 export async function processSyllabus(syllabusId, token, onProgress) {
-  await axios.post(
-    `${API_BASE_URL}/api/ai/syllabus/${syllabusId}/save`,
+  await api.post(
+    `/api/ai/syllabus/${syllabusId}/save`,
     {},
     { headers: { Authorization: `Bearer ${token}` } }
   );

@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from "../api";
+import api from "../apiClient";
 
 const OFFICIAL_SKILL_DOCS = {
   java: "https://dev.java/learn/",
@@ -64,8 +63,8 @@ function AIRecommendations({ syllabusId, jobId, token }) {
       setLoading(true);
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
+        const response = await api.get(
+          `/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

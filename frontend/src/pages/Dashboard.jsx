@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import axios from "axios";
-import { API_BASE_URL } from "../api";
+import api from "../apiClient";
 
 import {
 
@@ -98,8 +97,8 @@ function Dashboard({ token, syllabusId, jobId }) {
 
       try {
 
-        const reportResponse = await axios.get(
-          `${API_BASE_URL}/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
+        const reportResponse = await api.get(
+          `/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
           config
         );
 
@@ -110,8 +109,8 @@ function Dashboard({ token, syllabusId, jobId }) {
 
         setRecommendationsLoading(true);
         try {
-          const recommendationResponse = await axios.get(
-            `${API_BASE_URL}/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
+          const recommendationResponse = await api.get(
+            `/api/recommendations/jobs/${jobId}/syllabus/${syllabusId}`,
             config
           );
           if (cancelled) return;

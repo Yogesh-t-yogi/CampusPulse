@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from "../api";
+import api from "../apiClient";
 
 function GapAnalysis({ syllabusId, jobId, token }) {
   const [report, setReport] = useState(null);
@@ -36,8 +35,8 @@ function GapAnalysis({ syllabusId, jobId, token }) {
       setLoading(true);
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
+        const response = await api.get(
+          `/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

@@ -1,8 +1,7 @@
 
 import { useRef, useState } from "react";
-import axios from "axios";
+import api from "../apiClient";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
-import { API_BASE_URL } from "../api";
 import { processSyllabus } from "../syllabusProcessing";
 
 function SyllabusUpload({ token, onUploaded }) {
@@ -63,8 +62,8 @@ function SyllabusUpload({ token, onUploaded }) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const uploadResponse = await axios.post(
-        `${API_BASE_URL}/api/syllabus/upload`,
+      const uploadResponse = await api.post(
+        `/api/syllabus/upload`,
         formData,
         {
           headers: {

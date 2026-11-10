@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import api from "../apiClient";
 import {
   Bar,
   BarChart,
@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { API_BASE_URL } from "../api";
 
 const JOBS_PER_PAGE = 24;
 
@@ -58,8 +57,8 @@ function JobMarket({
 
   const fetchJobSkills = useCallback(
     async (jobId) => {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/jobs/${jobId}/skills`,
+      const response = await api.get(
+        `/api/jobs/${jobId}/skills`,
         getAuthConfig()
       );
       setJobSkills((previous) => ({
@@ -73,8 +72,8 @@ function JobMarket({
   const fetchSkillDemand = useCallback(async () => {
     setSkillDemandError("");
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/job-catalog/skill-demand`,
+      const response = await api.get(
+        `/api/job-catalog/skill-demand`,
         getAuthConfig()
       );
       setSkillDemand(Array.isArray(response.data) ? response.data : []);
@@ -113,8 +112,8 @@ function JobMarket({
     }
 
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/jobs`,
+      const response = await api.get(
+        `/api/jobs`,
         getAuthConfig()
       );
 
@@ -124,8 +123,8 @@ function JobMarket({
 
       setJobSkills({});
       try {
-        const skillsResponse = await axios.get(
-          `${API_BASE_URL}/api/jobs/skills`,
+        const skillsResponse = await api.get(
+          `/api/jobs/skills`,
           getAuthConfig()
         );
         const skillsByJob = Object.fromEntries(
@@ -178,8 +177,8 @@ function JobMarket({
     setNotice("");
 
     try {
-      await axios.post(
-        `${API_BASE_URL}/api/ai/jobs/${jobId}/extract-skills`,
+      await api.post(
+        `/api/ai/jobs/${jobId}/extract-skills`,
         {},
         getAuthConfig()
       );
@@ -219,8 +218,8 @@ function JobMarket({
     setNotice("");
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/jobs/custom`,
+      const response = await api.post(
+        `/api/jobs/custom`,
         customJob,
         getAuthConfig()
       );
@@ -266,8 +265,8 @@ function JobMarket({
     formData.append("file", csvFile);
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/job-catalog/import`,
+      const response = await api.post(
+        `/api/job-catalog/import`,
         formData,
         getAuthConfig()
       );
@@ -317,8 +316,8 @@ function JobMarket({
     const formData = new FormData();
     formData.append("file", resumeFile);
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/resume/match`,
+      const response = await api.post(
+        `/api/resume/match`,
         formData,
         getAuthConfig()
       );

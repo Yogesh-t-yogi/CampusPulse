@@ -4,7 +4,7 @@ import { API_BASE_URL } from "../api";
 
 const API_URL = `${API_BASE_URL}/api/auth`;
 
-function Login({ onLogin, onShowRegister }) {
+function Login({ onLogin, onShowRegister, notice }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -167,6 +167,13 @@ function Login({ onLogin, onShowRegister }) {
                   </button>
                 </div>
               </div>
+
+              {notice && !error && (
+                <div className="ca-message ca-error" role="status">
+                  <span>!</span>
+                  <p>{notice}</p>
+                </div>
+              )}
 
               {error && (
                 <div className="ca-message ca-error" role="alert">
