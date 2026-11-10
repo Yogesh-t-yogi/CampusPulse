@@ -4,7 +4,7 @@ import com.campuspulse.dto.matching.SemanticSkillMatch;
 import com.campuspulse.entity.job.JobRequiredSkill;
 import com.campuspulse.repository.embedding.VectorSearchRepository;
 import com.campuspulse.repository.job.JobRequiredSkillRepository;
-import com.campuspulse.service.embedding.EmbeddingService;
+import com.campuspulse.service.embedding.SkillEmbeddingCache;
 import com.campuspulse.service.job.SkillAliasService;
 import org.springframework.stereotype.Service;
 import com.campuspulse.dto.matching.SemanticGapReport;
@@ -12,20 +12,19 @@ import com.campuspulse.dto.matching.SemanticGapReport;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class SemanticMatchingService {
 
     private final JobRequiredSkillRepository jobRequiredSkillRepository;
     private final VectorSearchRepository vectorSearchRepository;
-    private final EmbeddingService embeddingService;
+    private final SkillEmbeddingCache skillEmbeddingCache;
     private final SkillAliasService skillAliasService;
 
     public SemanticMatchingService(
             JobRequiredSkillRepository jobRequiredSkillRepository,
             VectorSearchRepository vectorSearchRepository,
-            EmbeddingService embeddingService,
+            SkillEmbeddingCache skillEmbeddingCache,
             SkillAliasService skillAliasService) {
 
         this.jobRequiredSkillRepository =
@@ -34,8 +33,7 @@ public class SemanticMatchingService {
         this.vectorSearchRepository =
                 vectorSearchRepository;
 
-        this.embeddingService =
-                embeddingService;
+        this.skillEmbeddingCache = skillEmbeddingCache;
         this.skillAliasService = skillAliasService;
     }
 
@@ -55,6 +53,14 @@ public class SemanticMatchingService {
         List<SemanticSkillMatch> results =
                 new ArrayList<>();
 
+        // Vectors for all skills at once (cached after first use).
+        Map<String, String> vectors = skillEmbeddingCache.vectorsFor(
+                jobSkills.stream()
+                        .map(JobRequiredSkill::getSkill)
+                        .filter(skill -> skill != null && !skill.isBlank())
+                        .map(skillAliasService::normalizeSkill)
+                        .toList());
+
         for (JobRequiredSkill jobSkill : jobSkills) {
 
             if (jobSkill.getSkill() == null ||
@@ -63,20 +69,7 @@ public class SemanticMatchingService {
             }
 
             String skill = jobSkill.getSkill();
-            String normalizedSkill = skillAliasService.normalizeSkill(skill);
-
-            // Generate embedding for the job skill
-            List<Double> embedding =
-                    embeddingService.generateEmbedding(normalizedSkill);
-
-            String vector =
-                    embedding.stream()
-                            .map(String::valueOf)
-                            .collect(Collectors.joining(
-                                    ",",
-                                    "[",
-                                    "]"
-                            ));
+            String vector = vectors.get(skillAliasService.normalizeSkill(skill));
 
             // Search syllabus topics
             List<Map<String, Object>> matches =
