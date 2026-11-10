@@ -48,6 +48,22 @@ public class SemanticMatchingService {
         this.partialThreshold = partialThreshold;
     }
 
+    /** Match a plain list of skill names (e.g. top market skills) against a syllabus. */
+    public List<SemanticSkillMatch> matchSkillNames(Long syllabusId, List<String> skills) {
+        List<KeywordTopicMatcher.TopicText> topics = topicRepository
+                .findBySyllabusId(syllabusId).stream()
+                .map(t -> new KeywordTopicMatcher.TopicText(t.getId(), t.getName(), t.getDescription()))
+                .toList();
+        List<String> names = skills.stream().filter(s -> s != null && !s.isBlank()).toList();
+        Map<String, String> vectors = skillEmbeddingCache.vectorsFor(
+                names.stream().map(skillAliasService::normalizeSkill).toList());
+        List<SemanticSkillMatch> results = new ArrayList<>();
+        for (String skill : names) {
+            results.add(matchOne(skill, vectors.get(skillAliasService.normalizeSkill(skill)), syllabusId, topics));
+        }
+        return results;
+    }
+
     public List<SemanticSkillMatch> matchSkills(
             Long jobId,
             Long syllabusId) {

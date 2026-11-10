@@ -44,6 +44,10 @@ public class AppUser {
     @Column(name = "batch_year")
     private Integer batchYear;
 
+    // Student's chosen course syllabus for the dashboard (null = automatic).
+    @Column(name = "course_syllabus_id")
+    private Long courseSyllabusId;
+
     // Set for admin-created / imported / reset accounts; cleared when the user sets a password.
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
@@ -62,6 +66,9 @@ public class AppUser {
     public void setBatchYear(Integer batchYear) { this.batchYear = batchYear; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+
+    public Long getCourseSyllabusId() { return courseSyllabusId; }
+    public void setCourseSyllabusId(Long courseSyllabusId) { this.courseSyllabusId = courseSyllabusId; }
 
     public AppUser() {
     }
