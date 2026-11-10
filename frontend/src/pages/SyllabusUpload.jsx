@@ -1,11 +1,40 @@
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../apiClient";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { processSyllabus } from "../syllabusProcessing";
-import { Card, Page, PageHeader } from "../ui";
+import { Card, Field, Page, PageHeader } from "../ui";
 
-function SyllabusUpload({ token, onUploaded }) {
+function SyllabusUpload({ token, onUploaded, currentUser }) {
+  const isStudent = currentUser?.role === "STUDENT";
+  const [programs, setPrograms] = useState([]);
+  const [programId, setProgramId] = useState("");
+  const [semester, setSemester] = useState("");
+
+  // Programs to tag the syllabus with: own department for HOD/faculty, whole college for admins.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/api/org/programs")
+      .then(({ data }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        const ownDepartment = currentUser?.department?.id;
+        const scoped =
+          ["HOD", "FACULTY"].includes(currentUser?.role) && ownDepartment
+            ? list.filter((item) => item.departmentId === ownDepartment)
+            : list;
+        setPrograms(scoped);
+        if (isStudent && currentUser?.program?.id) setProgramId(String(currentUser.program.id));
+      })
+      .catch(() => !cancelled && setPrograms([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isStudent]);
+
+  const selectedProgram = programs.find((item) => String(item.id) === String(programId));
+  const semesterCount = selectedProgram?.durationSemesters || 8;
   const inputRef = useRef(null);
 
   const [file, setFile] = useState(null);
@@ -62,6 +91,8 @@ function SyllabusUpload({ token, onUploaded }) {
       // STEP 1: Upload PDF and save extracted text
       const formData = new FormData();
       formData.append("file", file);
+      if (programId) formData.append("programId", programId);
+      if (semester) formData.append("semester", semester);
 
       const uploadResponse = await api.post(
         `/api/syllabus/upload`,
@@ -168,6 +199,44 @@ function SyllabusUpload({ token, onUploaded }) {
       <div className="ui-grid ui-grid-main">
       <div className="upload-card cp-upload-card">
         <form onSubmit={handleUpload}>
+          <div className="ui-form-row" style={{ marginBottom: 16 }}>
+            <Field
+              label="Program"
+              hint={isStudent ? "Your program." : "Which course this syllabus belongs to."}
+            >
+              <select
+                value={programId}
+                disabled={isStudent || loading}
+                onChange={(event) => {
+                  setProgramId(event.target.value);
+                  setSemester("");
+                }}
+              >
+                <option value="">No program</option>
+                {programs.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name}
+                    {item.regulation ? ` (${item.regulation})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Semester">
+              <select value={semester} disabled={loading} onChange={(event) => setSemester(event.target.value)}>
+                <option value="">Not set</option>
+                {Array.from({ length: semesterCount }, (_, index) => index + 1).map((value) => (
+                  <option key={value} value={String(value)}>
+                    Semester {value}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <p className="ui-muted" style={{ margin: "0 0 16px" }}>
+            {isStudent
+              ? "Your uploads stay private to you."
+              : "Shared with your department and with students of the chosen program. You can change this later in Syllabi."}
+          </p>
           <div
             className="upload-dropzone"
             onClick={() => inputRef.current?.click()}

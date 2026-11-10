@@ -14,7 +14,7 @@ import {
   waitForProcessing,
 } from "../syllabusProcessing";
 
-function Curriculum({ syllabusId, onNext }) {
+function Curriculum({ syllabusId, onNext, canManage = true }) {
   const [syllabus, setSyllabus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -315,6 +315,7 @@ function Curriculum({ syllabusId, onNext }) {
         description="Check what the AI extracted. Fix names, add missing topics, or move topics between units before comparing with jobs."
         actions={
           <>
+            {canManage && (
             <Button
               variant={editMode ? "primary" : "secondary"}
               icon={editMode ? Check : Pencil}
@@ -323,6 +324,7 @@ function Curriculum({ syllabusId, onNext }) {
             >
               {editMode ? "Done editing" : "Edit curriculum"}
             </Button>
+            )}
             {onNext && (
               <Button variant="primary" icon={ArrowRight} onClick={onNext} disabled={subjects.length === 0}>
                 Choose a job

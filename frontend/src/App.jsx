@@ -478,6 +478,7 @@ function App() {
             onSelect={selectSyllabus}
             onChanged={() => refreshSyllabi()}
             setActivePage={setActivePage}
+            currentUser={currentUser}
           />
         );
 
@@ -485,6 +486,7 @@ function App() {
         return (
           <SyllabusUpload
             token={token}
+            currentUser={currentUser}
             onUploaded={handleUploaded}
           />
         );
@@ -495,6 +497,9 @@ function App() {
             key={selectedSyllabusId}
             syllabusId={selectedSyllabusId}
             onNext={() => setActivePage("Job Market")}
+            canManage={
+              syllabi.find((item) => String(item.id) === String(selectedSyllabusId))?.canManage !== false
+            }
           />
         );
 

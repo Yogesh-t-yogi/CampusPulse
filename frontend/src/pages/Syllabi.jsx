@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BookOpen, CheckCircle2, FileUp, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BookOpen, CheckCircle2, FileUp, Lock, Pencil, RefreshCw, Trash2, Users as UsersIcon } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import {
   Badge,
@@ -28,24 +28,39 @@ function statusOf(item) {
   return item.processingStatus || (Number(item.topicCount) > 0 ? "READY" : "NOT_PROCESSED");
 }
 
-// Index of the user's syllabi with open / use / rename / re-process / delete.
-function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, setActivePage }) {
+// Syllabi the user can read: own + shared with their department / program.
+// Change actions only where item.canManage (owner, HOD of the department, college admin).
+function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, setActivePage, currentUser }) {
   const toast = useToast();
+  const isStudent = currentUser?.role === "STUDENT";
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [renaming, setRenaming] = useState(null);
-  const [newName, setNewName] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("ALL");
+  const [programFilter, setProgramFilter] = useState("ALL");
+  const [programs, setPrograms] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: "", programId: "", semester: "", visibility: "DEPARTMENT" });
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    api
+      .get("/api/org/programs")
+      .then(({ data }) => setPrograms(Array.isArray(data) ? data : []))
+      .catch(() => setPrograms([]));
+  }, []);
+
   const rows = syllabi.filter((item) => {
-    const text = `${item.name || ""} ${item.fileName || ""}`.toLowerCase();
+    const text = `${item.name || ""} ${item.fileName || ""} ${item.ownerName || ""}`.toLowerCase();
     const status = statusOf(item);
     const statusMatch =
       statusFilter === "ALL" ||
       status === statusFilter ||
       (statusFilter === "READY" && status === "READY_WITH_WARNINGS");
-    return statusMatch && text.includes(query.trim().toLowerCase());
+    const ownerMatch = ownerFilter === "ALL" || (ownerFilter === "MINE" ? item.mine : !item.mine);
+    const programMatch =
+      programFilter === "ALL" || String(item.programId || "") === programFilter;
+    return statusMatch && ownerMatch && programMatch && text.includes(query.trim().toLowerCase());
   });
 
   const open = (item) => {
@@ -53,16 +68,31 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
     setActivePage("Curriculum");
   };
 
-  const saveName = async (event) => {
+  const openEditor = (item) => {
+    setEditing(item);
+    setForm({
+      name: item.name || "",
+      programId: item.programId ? String(item.programId) : "",
+      semester: item.semester ? String(item.semester) : "",
+      visibility: item.visibility || "PRIVATE",
+    });
+  };
+
+  const save = async (event) => {
     event.preventDefault();
     setBusy(true);
     try {
-      await api.put(`/api/syllabus/${renaming.id}`, { name: newName });
-      toast("Syllabus renamed");
-      setRenaming(null);
+      await api.put(`/api/syllabus/${editing.id}`, {
+        name: form.name,
+        programId: form.programId || null,
+        semester: form.semester || null,
+        visibility: form.visibility,
+      });
+      toast("Syllabus updated");
+      setEditing(null);
       onChanged();
     } catch (err) {
-      toast(errorMessage(err, "Couldn't rename."), "danger");
+      toast(errorMessage(err, "Couldn't save."), "danger");
     } finally {
       setBusy(false);
     }
@@ -93,6 +123,8 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
     }
   };
 
+  const editProgram = programs.find((item) => String(item.id) === form.programId);
+
   const columns = [
     {
       key: "name",
@@ -108,12 +140,35 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
               </>
             )}
           </strong>
-          <small>{item.fileName}</small>
+          <small>{item.mine ? "Uploaded by you" : `By ${item.ownerName || "someone"}`}</small>
         </span>
       ),
     },
+    {
+      key: "program",
+      label: "Program · Semester",
+      render: (item) => (
+        <span className="ui-cell-title">
+          <strong>{item.programName || "No program"}</strong>
+          <small>{item.semester ? `Semester ${item.semester}` : "Semester not set"}</small>
+        </span>
+      ),
+    },
+    {
+      key: "visibility",
+      label: "Shared",
+      render: (item) =>
+        item.visibility === "DEPARTMENT" ? (
+          <Badge tone="info">
+            <UsersIcon size={12} aria-hidden="true" /> Department
+          </Badge>
+        ) : (
+          <Badge tone="neutral">
+            <Lock size={12} aria-hidden="true" /> Private
+          </Badge>
+        ),
+    },
     { key: "status", label: "Status", render: (item) => <Badge status={statusOf(item)} /> },
-    { key: "subjectCount", label: "Subjects", render: (item) => Number(item.subjectCount || 0) },
     { key: "topicCount", label: "Topics", render: (item) => Number(item.topicCount || 0) },
     {
       key: "createdAt",
@@ -137,21 +192,18 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
               toast(`"${item.name}" is now the active syllabus`);
             }}
           />
-          <IconButton
-            icon={Pencil}
-            label="Rename"
-            onClick={() => {
-              setRenaming(item);
-              setNewName(item.name || "");
-            }}
-          />
-          <IconButton
-            icon={RefreshCw}
-            label="Re-process with AI"
-            onClick={() => reprocess(item)}
-            disabled={statusOf(item) === "PROCESSING"}
-          />
-          <IconButton icon={Trash2} label="Delete" variant="ghost-danger" onClick={() => setDeleting(item)} />
+          {item.canManage && (
+            <>
+              <IconButton icon={Pencil} label="Edit details" onClick={() => openEditor(item)} />
+              <IconButton
+                icon={RefreshCw}
+                label="Re-process with AI"
+                onClick={() => reprocess(item)}
+                disabled={statusOf(item) === "PROCESSING"}
+              />
+              <IconButton icon={Trash2} label="Delete" variant="ghost-danger" onClick={() => setDeleting(item)} />
+            </>
+          )}
         </div>
       ),
     },
@@ -162,7 +214,11 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
       <PageHeader
         eyebrow="Curriculum"
         title="Syllabi"
-        description="Every syllabus you uploaded. Open one to review its subjects, units and topics."
+        description={
+          isStudent
+            ? "Your own syllabi and the ones your department shares for your program."
+            : "Your syllabi and the ones shared in your department. Open one to review its curriculum."
+        }
         actions={
           <Button variant="primary" icon={FileUp} onClick={() => setActivePage("Upload Syllabus")}>
             Upload syllabus
@@ -177,14 +233,22 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
         toolbar={
           <>
             <div className="ui-table-toolbar-group">
-              <SearchInput value={query} onChange={setQuery} placeholder="Search syllabi" />
-              <select
-                className="ui-select"
-                style={{ width: "auto" }}
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                aria-label="Filter by status"
-              >
+              <SearchInput value={query} onChange={setQuery} placeholder="Search syllabi or owner" />
+              <select className="ui-select" style={{ width: "auto" }} value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)} aria-label="Filter by owner">
+                <option value="ALL">All</option>
+                <option value="MINE">Mine</option>
+                <option value="SHARED">Shared with me</option>
+              </select>
+              <select className="ui-select" style={{ width: "auto" }} value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} aria-label="Filter by program">
+                <option value="ALL">All programs</option>
+                <option value="">No program</option>
+                {programs.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select className="ui-select" style={{ width: "auto" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
                 {STATUS_FILTERS.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -201,8 +265,8 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
           syllabi.length === 0 ? (
             <EmptyState
               icon={BookOpen}
-              title="Upload your first syllabus"
-              description="A PDF is enough. Scanned pages are read with OCR."
+              title="No syllabi yet"
+              description="Upload a syllabus PDF, or ask your department to share one."
               action={
                 <Button variant="primary" icon={FileUp} onClick={() => setActivePage("Upload Syllabus")}>
                   Upload syllabus
@@ -210,28 +274,59 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
               }
             />
           ) : (
-            <EmptyState title="No syllabi match" description="Try another search or status." />
+            <EmptyState title="No syllabi match" description="Try another search or filter." />
           )
         }
       />
 
       <Modal
-        open={Boolean(renaming)}
-        title="Rename syllabus"
-        onClose={() => setRenaming(null)}
-        size="sm"
+        open={Boolean(editing)}
+        title="Edit syllabus details"
+        onClose={() => setEditing(null)}
         footer={
           <>
-            <Button onClick={() => setRenaming(null)}>Cancel</Button>
-            <Button variant="primary" type="submit" form="rename-syllabus" disabled={busy || !newName.trim()}>
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
+            <Button variant="primary" type="submit" form="syllabus-details" disabled={busy || !form.name.trim()}>
               Save
             </Button>
           </>
         }
       >
-        <form id="rename-syllabus" className="ui-form" onSubmit={saveName}>
+        <form id="syllabus-details" className="ui-form" onSubmit={save}>
           <Field label="Name">
-            <input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={255} autoFocus />
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={255} autoFocus />
+          </Field>
+          <div className="ui-form-row">
+            <Field label="Program">
+              <select value={form.programId} onChange={(e) => setForm({ ...form, programId: e.target.value, semester: "" })}>
+                <option value="">No program</option>
+                {programs.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name}
+                    {item.regulation ? ` (${item.regulation})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Semester">
+              <select value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
+                <option value="">Not set</option>
+                {Array.from({ length: editProgram?.durationSemesters || 8 }, (_, index) => index + 1).map((value) => (
+                  <option key={value} value={String(value)}>
+                    Semester {value}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field
+            label="Who can see it"
+            hint="Department: HOD and faculty of the department, and students of the program."
+          >
+            <select value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })}>
+              <option value="DEPARTMENT">Department (shared)</option>
+              <option value="PRIVATE">Private (owner and admins)</option>
+            </select>
           </Field>
         </form>
       </Modal>
@@ -239,7 +334,7 @@ function Syllabi({ syllabi, loading, selectedSyllabusId, onSelect, onChanged, se
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete syllabus?"
-        message={`"${deleting?.name}" and its curriculum, topic index and saved reports will be deleted. This can't be undone.`}
+        message={`"${deleting?.name}" and its curriculum, topic index and saved reports will be deleted for everyone it is shared with. This can't be undone.`}
         busy={busy}
         onConfirm={remove}
         onClose={() => setDeleting(null)}
