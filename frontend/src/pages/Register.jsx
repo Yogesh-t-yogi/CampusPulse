@@ -9,6 +9,7 @@ function Register({ onRegistered, onShowLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("FACULTY");
+  const [institutionCode, setInstitutionCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -35,6 +36,7 @@ function Register({ onRegistered, onShowLogin }) {
           email: email.trim(),
           password,
           role,
+          institutionCode: institutionCode.trim(),
         }),
       });
 
@@ -132,6 +134,20 @@ function Register({ onRegistered, onShowLogin }) {
             </p>
 
             <form className="ca-form" onSubmit={handleSubmit}>
+              <div className="ca-field">
+                <label htmlFor="register-college">College code</label>
+                <div className="ca-input-wrap">
+                  <span className="ca-input-icon" aria-hidden="true">#</span>
+                  <input
+                    id="register-college"
+                    value={institutionCode}
+                    onChange={(event) => setInstitutionCode(event.target.value)}
+                    placeholder="Ask your college admin (leave blank for the default college)"
+                    autoComplete="organization"
+                  />
+                </div>
+              </div>
+
               <div className="ca-field">
                 <span className="ca-role-label" id="register-role-label">I am</span>
                 <div

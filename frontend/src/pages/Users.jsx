@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Copy, KeyRound, Trash2, UserPlus, Users as UsersIcon } from "lucide-react";
+import { Copy, KeyRound, Pencil, Trash2, UserPlus, Users as UsersIcon } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
-import { roleLabel } from "../permissions";
+import { assignableRoles, roleLabel } from "../permissions";
 import {
   Alert,
   Badge,
@@ -19,28 +19,42 @@ import {
 } from "../ui";
 import { useToast } from "../ui/toast";
 
-const ROLES = ["ADMIN", "FACULTY", "STUDENT"];
-const EMPTY_FORM = { name: "", email: "", role: "STUDENT" };
+const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "HOD", "FACULTY", "STUDENT"];
+const EMPTY_FORM = { name: "", email: "", role: "STUDENT", departmentId: "", programId: "" };
 
-// Admin: accounts index, create (one-time password), change role, reset password, delete.
-function Users({ currentUserId }) {
+// Accounts of the current college (HOD: own department).
+// Index, create (one-time password), edit role/department/program, reset password, delete.
+function Users({ currentUser }) {
   const toast = useToast();
+  const actorRole = currentUser?.role;
+  const isHod = actorRole === "HOD";
+  const roles = assignableRoles(actorRole);
+
   const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
-  const [creating, setCreating] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [editing, setEditing] = useState(null); // null | "new" | user
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
-  const [secret, setSecret] = useState(null); // {name, email, temporaryPassword}
+  const [secret, setSecret] = useState(null);
   const [resetting, setResetting] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/admin/users");
-      setUsers(Array.isArray(data) ? data : []);
+      const [usersResponse, departmentsResponse, programsResponse] = await Promise.all([
+        api.get("/api/admin/users"),
+        api.get("/api/org/departments"),
+        api.get("/api/org/programs"),
+      ]);
+      setUsers(Array.isArray(usersResponse.data) ? usersResponse.data : []);
+      setDepartments(Array.isArray(departmentsResponse.data) ? departmentsResponse.data : []);
+      setPrograms(Array.isArray(programsResponse.data) ? programsResponse.data : []);
     } catch (err) {
       toast(errorMessage(err, "Couldn't load users."), "danger");
     } finally {
@@ -53,30 +67,51 @@ function Users({ currentUserId }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  const create = async (event) => {
+  const ownDepartmentId = currentUser?.department?.id ? String(currentUser.department.id) : "";
+  const departmentOptions = isHod
+    ? departments.filter((item) => String(item.id) === ownDepartmentId)
+    : departments;
+  const programOptions = programs.filter((item) => String(item.departmentId) === String(form.departmentId));
+
+  const openEditor = (user) => {
+    setFormError("");
+    setEditing(user || "new");
+    setForm(
+      user
+        ? {
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            departmentId: user.departmentId ? String(user.departmentId) : "",
+            programId: user.programId ? String(user.programId) : "",
+          }
+        : { ...EMPTY_FORM, role: roles.includes("STUDENT") ? "STUDENT" : roles[0], departmentId: isHod ? ownDepartmentId : "" }
+    );
+  };
+
+  const save = async (event) => {
     event.preventDefault();
     setBusy(true);
     setFormError("");
+    const body = {
+      role: form.role,
+      departmentId: form.departmentId || null,
+      programId: form.role === "STUDENT" ? form.programId || null : null,
+    };
     try {
-      const { data } = await api.post("/api/admin/users", form);
-      setCreating(false);
-      setForm(EMPTY_FORM);
-      setSecret(data);
+      if (editing === "new") {
+        const { data } = await api.post("/api/admin/users", { ...body, name: form.name, email: form.email });
+        setSecret(data);
+      } else {
+        await api.put(`/api/admin/users/${editing.id}`, body);
+        toast("Account updated");
+      }
+      setEditing(null);
       await load();
     } catch (err) {
-      setFormError(errorMessage(err, "Couldn't create the account."));
+      setFormError(errorMessage(err, "Couldn't save the account."));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const changeRole = async (user, role) => {
-    try {
-      const { data } = await api.put(`/api/admin/users/${user.id}/role`, { role });
-      setUsers((list) => list.map((item) => (item.id === data.id ? data : item)));
-      toast(`${user.name} is now ${roleLabel(role)}`);
-    } catch (err) {
-      toast(errorMessage(err, "Couldn't change the role."), "danger");
     }
   };
 
@@ -118,44 +153,37 @@ function Users({ currentUserId }) {
 
   const rows = users.filter((user) => {
     const text = `${user.name} ${user.email}`.toLowerCase();
-    return (roleFilter === "ALL" || user.role === roleFilter) && text.includes(query.trim().toLowerCase());
+    return (
+      (roleFilter === "ALL" || user.role === roleFilter) &&
+      (departmentFilter === "ALL" || String(user.departmentId || "") === departmentFilter) &&
+      text.includes(query.trim().toLowerCase())
+    );
   });
 
   const columns = [
     {
       key: "name",
-      label: "User",
+      label: "Person",
       render: (user) => (
         <span className="ui-cell-title">
           <strong>
             {user.name}
-            {user.id === currentUserId && " (you)"}
+            {user.id === currentUser?.id && " (you)"}
           </strong>
           <small>{user.email}</small>
         </span>
       ),
     },
+    { key: "role", label: "Role", render: (user) => <Badge status={user.role}>{roleLabel(user.role)}</Badge> },
     {
-      key: "role",
-      label: "Role",
-      render: (user) =>
-        user.id === currentUserId ? (
-          <Badge status={user.role}>{roleLabel(user.role)}</Badge>
-        ) : (
-          <select
-            className="ui-select"
-            style={{ width: 140 }}
-            aria-label={`Role for ${user.name}`}
-            value={user.role}
-            onChange={(event) => changeRole(user, event.target.value)}
-          >
-            {ROLES.map((role) => (
-              <option key={role} value={role}>
-                {roleLabel(role)}
-              </option>
-            ))}
-          </select>
-        ),
+      key: "placement",
+      label: "Department · Program",
+      render: (user) => (
+        <span className="ui-cell-title">
+          <strong>{user.departmentName || "No department"}</strong>
+          <small>{user.programName || (user.role === "STUDENT" ? "No program" : "")}</small>
+        </span>
+      ),
     },
     {
       key: "createdAt",
@@ -170,8 +198,9 @@ function Users({ currentUserId }) {
       label: "",
       width: "1%",
       render: (user) =>
-        user.id === currentUserId ? null : (
+        user.id === currentUser?.id ? null : (
           <div className="ui-row-actions">
+            <IconButton icon={Pencil} label={`Edit ${user.name}`} onClick={() => openEditor(user)} />
             <IconButton icon={KeyRound} label={`Reset password for ${user.name}`} onClick={() => setResetting(user)} />
             <IconButton icon={Trash2} label={`Delete ${user.name}`} variant="ghost-danger" onClick={() => setDeleting(user)} />
           </div>
@@ -179,16 +208,22 @@ function Users({ currentUserId }) {
     },
   ];
 
-  const counts = ROLES.map((role) => [role, users.filter((user) => user.role === role).length]);
+  const counts = ALL_ROLES.map((role) => [role, users.filter((user) => user.role === role).length]).filter(
+    ([, count]) => count > 0
+  );
 
   return (
     <Page>
       <PageHeader
-        eyebrow="Admin"
+        eyebrow={isHod ? "Department" : "Admin"}
         title="Users"
-        description="Create accounts, change roles and reset passwords. Role changes apply at the next sign-in."
+        description={
+          isHod
+            ? `Faculty and students of ${currentUser?.department?.name || "your department"}.`
+            : `People of ${currentUser?.institution?.name || "this college"}. Role and placement changes apply at the next sign-in.`
+        }
         actions={
-          <Button variant="primary" icon={UserPlus} onClick={() => setCreating(true)}>
+          <Button variant="primary" icon={UserPlus} onClick={() => openEditor(null)} disabled={roles.length === 0}>
             Add user
           </Button>
         }
@@ -202,20 +237,25 @@ function Users({ currentUserId }) {
           <>
             <div className="ui-table-toolbar-group">
               <SearchInput value={query} onChange={setQuery} placeholder="Search name or email" />
-              <select
-                className="ui-select"
-                style={{ width: "auto" }}
-                value={roleFilter}
-                onChange={(event) => setRoleFilter(event.target.value)}
-                aria-label="Filter by role"
-              >
+              <select className="ui-select" style={{ width: "auto" }} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filter by role">
                 <option value="ALL">All roles</option>
-                {ROLES.map((role) => (
+                {ALL_ROLES.map((role) => (
                   <option key={role} value={role}>
                     {roleLabel(role)}
                   </option>
                 ))}
               </select>
+              {!isHod && (
+                <select className="ui-select" style={{ width: "auto" }} value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} aria-label="Filter by department">
+                  <option value="ALL">All departments</option>
+                  <option value="">No department</option>
+                  {departments.map((item) => (
+                    <option key={item.id} value={String(item.id)}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <span className="ui-chip-list">
               {counts.map(([role, count]) => (
@@ -226,41 +266,74 @@ function Users({ currentUserId }) {
             </span>
           </>
         }
-        empty={<EmptyState icon={UsersIcon} title="No users match" description="Try another search or role." />}
+        empty={<EmptyState icon={UsersIcon} title="No people match" description="Try another search or filter." />}
       />
 
       <Drawer
-        open={creating}
-        title="Add user"
-        description="A one-time password is shown after saving. Share it with the person securely."
-        onClose={() => setCreating(false)}
+        open={Boolean(editing)}
+        title={editing === "new" ? "Add user" : `Edit ${editing?.name}`}
+        description={editing === "new" ? "A one-time password is shown after saving. Share it securely." : undefined}
+        onClose={() => setEditing(null)}
         footer={
           <>
-            <Button onClick={() => setCreating(false)}>Cancel</Button>
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
             <Button variant="primary" type="submit" form="user-form" disabled={busy}>
-              {busy ? "Creating…" : "Create account"}
+              {busy ? "Saving…" : editing === "new" ? "Create account" : "Save changes"}
             </Button>
           </>
         }
       >
-        <form id="user-form" className="ui-form" onSubmit={create}>
+        <form id="user-form" className="ui-form" onSubmit={save}>
           {formError && <Alert tone="danger">{formError}</Alert>}
-          <Field label="Full name">
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus />
-          </Field>
-          <Field label="Email">
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="name@college.edu" />
-          </Field>
+          {editing === "new" && (
+            <>
+              <Field label="Full name">
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus />
+              </Field>
+              <Field label="Email">
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="name@college.edu" />
+              </Field>
+            </>
+          )}
           <Field label="Role">
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {ROLES.map((role) => (
+              {roles.concat(editing !== "new" && !roles.includes(form.role) ? [form.role] : []).map((role) => (
                 <option key={role} value={role}>
                   {roleLabel(role)}
                 </option>
               ))}
             </select>
           </Field>
-          <Alert tone="info">Bulk import of students from Excel comes with the multi-college update (Phase 6).</Alert>
+          <Field label="Department" hint={isHod ? "HODs add people to their own department." : undefined}>
+            <select
+              value={form.departmentId}
+              disabled={isHod}
+              onChange={(e) => setForm({ ...form, departmentId: e.target.value, programId: "" })}
+            >
+              <option value="">No department</option>
+              {departmentOptions.map((item) => (
+                <option key={item.id} value={String(item.id)}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {form.role === "STUDENT" && (
+            <Field label="Program" hint={form.departmentId ? undefined : "Choose a department first."}>
+              <select value={form.programId} disabled={!form.departmentId} onChange={(e) => setForm({ ...form, programId: e.target.value })}>
+                <option value="">No program</option>
+                {programOptions.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name}
+                    {item.regulation ? ` (${item.regulation})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {editing === "new" && (
+            <Alert tone="info">Adding many students at once from Excel comes next (Phase 6.5).</Alert>
+          )}
         </form>
       </Drawer>
 
@@ -292,7 +365,7 @@ function Users({ currentUserId }) {
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete account?"
-        message={`${deleting?.name}'s account, syllabi and private jobs will be deleted. Shared catalog jobs stay. This can't be undone.`}
+        message={`${deleting?.name}'s account, syllabi and private jobs will be deleted. Catalog jobs stay. This can't be undone.`}
         busy={busy}
         onConfirm={remove}
         onClose={() => setDeleting(null)}

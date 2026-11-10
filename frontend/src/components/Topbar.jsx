@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { Building2, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
 import { getTheme, setTheme } from "../theme/theme";
 import { roleLabel } from "../permissions";
 
@@ -24,6 +24,9 @@ function Topbar({
   jobs,
   selectedJobId,
   onJobChange,
+  institutions = [],
+  actingInstitutionId,
+  onInstitutionChange,
 }) {
   const [theme, setThemeState] = useState(getTheme);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,7 +61,30 @@ function Topbar({
         <strong>{title}</strong>
       </div>
 
-      <div className="shell-tenant" aria-hidden="true" />
+      <div className="shell-tenant">
+        {user?.role === "SUPER_ADMIN" && institutions.length > 0 ? (
+          <label className="shell-context-item shell-college">
+            <Building2 size={15} aria-hidden="true" />
+            <span>College</span>
+            <select
+              value={actingInstitutionId || String(user?.institution?.id || "")}
+              onChange={(event) => onInstitutionChange(event.target.value)}
+            >
+              {institutions.map((item) => (
+                <option key={item.id} value={String(item.id)}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : user?.institution ? (
+          <span className="shell-college-chip" title={user.institution.code}>
+            <Building2 size={15} aria-hidden="true" />
+            {user.institution.name}
+            {user.department ? <small> · {user.department.name}</small> : null}
+          </span>
+        ) : null}
+      </div>
 
       <div className="shell-context">
         <label className="shell-context-item">

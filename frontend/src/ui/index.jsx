@@ -76,7 +76,7 @@ const STATUS_TONES = {
   MATCHED: "success", PARTIAL: "warning", GAP: "danger",
   READY: "success", READY_WITH_WARNINGS: "warning", PROCESSING: "info",
   FAILED: "danger", NOT_PROCESSED: "neutral",
-  ADMIN: "accent", HOD: "info", FACULTY: "neutral", STUDENT: "success",
+  SUPER_ADMIN: "danger", ADMIN: "accent", HOD: "info", FACULTY: "neutral", STUDENT: "success",
   DATASET: "neutral", USER_PROVIDED: "info",
 };
 

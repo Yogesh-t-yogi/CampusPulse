@@ -3,6 +3,8 @@ import { API_BASE_URL } from "./api";
 
 export const TOKEN_KEY = "campuspulse_token";
 export const SESSION_EXPIRED_EVENT = "campuspulse:session-expired";
+// Platform admins can act in another college; the backend reads this header.
+export const INSTITUTION_KEY = "campuspulse_institution_id";
 
 // One axios instance for the whole app: base URL, login token, and
 // a single place that reacts to an expired session (HTTP 401).
@@ -12,6 +14,10 @@ api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem(TOKEN_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const institutionId = sessionStorage.getItem(INSTITUTION_KEY);
+  if (institutionId) {
+    config.headers["X-Institution-Id"] = institutionId;
   }
   return config;
 });

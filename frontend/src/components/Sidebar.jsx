@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   BookOpen,
+  Building2,
   BriefcaseBusiness,
   ChartNoAxesCombined,
   Database,
@@ -46,6 +47,7 @@ const GROUPS = [
   {
     title: "Admin",
     items: [
+      { page: "Organisation", label: "Organisation", icon: Building2 },
       { page: "Job catalog", label: "Job catalog", icon: Database },
       { page: "Users", label: "Users", icon: UsersIcon },
     ],

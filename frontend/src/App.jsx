@@ -1,13 +1,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import api, { SESSION_EXPIRED_EVENT } from "./apiClient";
+import api, { INSTITUTION_KEY, SESSION_EXPIRED_EVENT } from "./apiClient";
 
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Home from "./pages/Home";
 import Syllabi from "./pages/Syllabi";
 import JobCatalog from "./pages/JobCatalog";
+import Organisation from "./pages/Organisation";
 import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
 import Report from "./pages/Report";
@@ -37,6 +38,7 @@ const PAGE_PATHS = {
   "Market insights": "/insights",
   "Resume match": "/resume",
   "Job catalog": "/catalog",
+  Organisation: "/organisation",
   Users: "/users",
 };
 
@@ -98,7 +100,13 @@ function App() {
   const [sessionNotice, setSessionNotice] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const role = currentUser?.role;
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  // Platform admins pick which college they work in (sent as X-Institution-Id).
+  const [institutions, setInstitutions] = useState([]);
+  const [actingInstitutionId, setActingInstitutionId] = useState(
+    () => sessionStorage.getItem(INSTITUTION_KEY) || ""
+  );
+  const [pageVersion, setPageVersion] = useState(0);
 
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
@@ -136,6 +144,7 @@ function App() {
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem("campuspulse_token");
+    sessionStorage.removeItem(INSTITUTION_KEY);
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
 
@@ -315,6 +324,12 @@ function App() {
         if (cancelled) return;
         setCurrentUser(data);
         // Students and faculty always see their own mode; admins can switch.
+        if (data.role === "SUPER_ADMIN") {
+          api
+            .get("/api/org/institutions")
+            .then((response) => !cancelled && setInstitutions(response.data || []))
+            .catch(() => !cancelled && setInstitutions([]));
+        }
         // Colours follow the role: teal for students, indigo for faculty/admin.
         setMode(data.role === "STUDENT" ? "student" : "faculty");
       })
@@ -333,6 +348,14 @@ function App() {
 
     return () => window.clearTimeout(timer);
   }, [refreshSyllabi, refreshJobs]);
+
+  const changeInstitution = (id) => {
+    if (id) sessionStorage.setItem(INSTITUTION_KEY, String(id));
+    else sessionStorage.removeItem(INSTITUTION_KEY);
+    setActingInstitutionId(id ? String(id) : "");
+    setPageVersion((value) => value + 1);
+    void refreshJobs();
+  };
 
   const selectSyllabus = (id) => {
     const value = id ? String(id) : "";
@@ -513,8 +536,19 @@ function App() {
           />
         );
 
+      case "Organisation":
+        return (
+          <Organisation
+            user={currentUser}
+            onChanged={() =>
+              currentUser?.role === "SUPER_ADMIN" &&
+              api.get("/api/org/institutions").then((response) => setInstitutions(response.data || []))
+            }
+          />
+        );
+
       case "Users":
-        return <Users currentUserId={currentUser?.id} />;
+        return <Users currentUser={currentUser} />;
 
       case "Job catalog":
         return <JobCatalog onChanged={refreshJobs} />;
@@ -559,6 +593,9 @@ function App() {
           jobs={jobs}
           selectedJobId={selectedJobId}
           onJobChange={handleJobChange}
+          institutions={institutions}
+          actingInstitutionId={actingInstitutionId}
+          onInstitutionChange={changeInstitution}
         />
 
         {WORKFLOW_PAGES.has(activePage) && (
@@ -576,7 +613,9 @@ function App() {
           </div>
         )}
 
-        {renderPage()}
+        <div key={`${actingInstitutionId}-${pageVersion}`} className="shell-page">
+          {renderPage()}
+        </div>
       </div>
     </div>
   );

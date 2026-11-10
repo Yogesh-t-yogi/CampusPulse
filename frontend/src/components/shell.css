@@ -175,3 +175,20 @@
   .ui-page { padding: 20px 16px 40px; }
   .shell-user-text { display: none; }
 }
+
+.shell-tenant { display: flex; align-items: center; }
+.shell-college-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--cp-accent-tint);
+  color: var(--cp-accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shell-college-chip small { font-weight: 500; opacity: 0.85; }
+.shell-college { color: var(--cp-accent); }
+.shell-page { display: contents; }
