@@ -24,6 +24,8 @@ import java.util.List;
 @Service
 public class SyllabusPersistenceService {
 
+    private static final int EMBEDDING_BATCH_SIZE = 64;
+
     private final SyllabusRepository syllabusRepository;
     private final EmbeddingService embeddingService;
     private final TopicEmbeddingJdbcRepository topicEmbeddingRepository;
@@ -98,36 +100,28 @@ public class SyllabusPersistenceService {
         int generated = 0;
         int failed = 0;
         String firstError = "";
-        for (Topic topic : topics) {
+
+        // Embed topics in batches (one HTTP call per batch, not per topic).
+        for (int start = 0; start < topics.size(); start += EMBEDDING_BATCH_SIZE) {
+            List<Topic> batch = topics.subList(
+                    start, Math.min(start + EMBEDDING_BATCH_SIZE, topics.size()));
             try {
-                String text = topic.getName();
+                List<String> texts = batch.stream()
+                        .map(SyllabusPersistenceService::embeddingText)
+                        .toList();
+                List<List<Double>> vectors = embeddingService.generateEmbeddings(texts);
 
-                if (topic.getDescription() != null
-                        && !topic.getDescription().isBlank()) {
-                    text += " " + topic.getDescription();
+                for (int i = 0; i < batch.size(); i++) {
+                    topicEmbeddingRepository.saveEmbedding(
+                            batch.get(i).getId(),
+                            EmbeddingService.toVectorLiteral(vectors.get(i)),
+                            EmbeddingService.MODEL);
+                    generated++;
                 }
-
-                var embedding = embeddingService.generateEmbedding(text);
-
-                if (embedding == null || embedding.size() != 384) {
-                    throw new IllegalStateException(
-                            "Embedding service returned an invalid vector.");
-                }
-
-                String vector = embedding.stream()
-                        .map(String::valueOf)
-                        .collect(java.util.stream.Collectors.joining(
-                                ",", "[", "]"));
-
-                topicEmbeddingRepository.saveEmbedding(
-                        topic.getId(),
-                        vector,
-                        "sentence-transformers/all-MiniLM-L6-v2");
-                generated++;
             } catch (WebClientException
                      | DataAccessException
                      | IllegalStateException exception) {
-                failed++;
+                failed += batch.size();
                 if (firstError.isEmpty()) {
                     String detail = getEmbeddingFailureDetail(exception);
                     if (detail == null || detail.isBlank()) {
@@ -138,8 +132,8 @@ public class SyllabusPersistenceService {
                     }
                     firstError = detail;
                 }
-                // Stop early if the service is clearly down (first 3 all failed).
-                if (generated == 0 && failed >= 3) {
+                // First batch failed completely: service is down, stop here.
+                if (generated == 0) {
                     failed = topics.size();
                     break;
                 }
@@ -157,6 +151,15 @@ public class SyllabusPersistenceService {
                         + firstError
                         + " Re-run processing from the Curriculum page once the"
                         + " AI service is running.");
+    }
+
+    private static String embeddingText(Topic topic) {
+        String text = topic.getName();
+        if (topic.getDescription() != null
+                && !topic.getDescription().isBlank()) {
+            text += " " + topic.getDescription();
+        }
+        return text;
     }
 
     private String getEmbeddingFailureDetail(RuntimeException exception) {

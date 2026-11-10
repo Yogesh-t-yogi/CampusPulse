@@ -56,7 +56,43 @@ public class PythonEmbeddingService implements EmbeddingService {
         return response.embedding();
     }
 
+    @Override
+    public List<List<Double>> generateEmbeddings(List<String> texts) {
+        if (texts.isEmpty()) {
+            return List.of();
+        }
+
+        BatchEmbeddingResponse response = webClient.post()
+                .uri("/embed/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new BatchEmbeddingRequest(texts))
+                .retrieve()
+                .bodyToMono(BatchEmbeddingResponse.class)
+                .timeout(Duration.ofSeconds(120), Mono.error(
+                        new IllegalStateException(
+                                "The AI embedding service did not respond within 120 seconds.")))
+                .block();
+
+        if (response == null
+                || response.embeddings() == null
+                || response.embeddings().size() != texts.size()
+                || response.embeddings().stream().anyMatch(e -> e == null || e.size() != 384)) {
+            throw new IllegalStateException(
+                    "Embedding service returned an invalid batch response.");
+        }
+
+        return response.embeddings();
+    }
+
     private record EmbeddingRequest(String text) {
+    }
+
+    private record BatchEmbeddingRequest(List<String> texts) {
+    }
+
+    private record BatchEmbeddingResponse(
+            int dimension,
+            List<List<Double>> embeddings) {
     }
 
     private record EmbeddingResponse(
