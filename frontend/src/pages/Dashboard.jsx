@@ -30,7 +30,7 @@ import {
 
 } from "recharts";
 
-function Dashboard({ token, syllabusId, jobId }) {
+function Dashboard({ token, syllabusId, jobId, embedded = false }) {
 
   const [report, setReport] = useState(null);
 
@@ -107,6 +107,9 @@ function Dashboard({ token, syllabusId, jobId }) {
 
         setReport(reportResponse.data);
         setLoading(false);
+
+        // Inside the Report page, recommendations have their own tab.
+        if (embedded) return;
 
         setRecommendationsLoading(true);
         try {
@@ -200,13 +203,13 @@ function Dashboard({ token, syllabusId, jobId }) {
 
     };
 
-  }, [syllabusId, jobId, token, reloadKey]);
+  }, [syllabusId, jobId, token, reloadKey, embedded]);
 
   if (loading) {
 
     return (
 
-      <main className="page-content cp-dashboard">
+      <main className={`page-content cp-dashboard${embedded ? " cp-embedded" : ""}`}>
 
         <div className="cp-loading">
 
@@ -228,7 +231,7 @@ function Dashboard({ token, syllabusId, jobId }) {
 
     return (
 
-      <main className="page-content cp-dashboard">
+      <main className={`page-content cp-dashboard${embedded ? " cp-embedded" : ""}`}>
 
         <div className="cp-state-card">
 
@@ -302,7 +305,7 @@ function Dashboard({ token, syllabusId, jobId }) {
 
   return (
 
-    <main className="page-content cp-dashboard">
+    <main className={`page-content cp-dashboard${embedded ? " cp-embedded" : ""}`}>
 
       <section className="cp-hero">
 

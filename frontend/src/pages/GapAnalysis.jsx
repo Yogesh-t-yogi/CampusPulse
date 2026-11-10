@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import api from "../apiClient";
 
-function GapAnalysis({ syllabusId, jobId, token }) {
+function GapAnalysis({ syllabusId, jobId, token, embedded = false }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -83,7 +83,7 @@ function GapAnalysis({ syllabusId, jobId, token }) {
 
   if (loading) {
     return (
-      <main className="page-content cp-gap">
+      <main className={`page-content cp-gap${embedded ? " cp-embedded" : ""}`}>
         <div className="cg-state">
           <div className="cg-spinner" />
           <h2>Analyzing skill alignment</h2>
@@ -95,7 +95,7 @@ function GapAnalysis({ syllabusId, jobId, token }) {
 
   if (error || !report) {
     return (
-      <main className="page-content cp-gap">
+      <main className={`page-content cp-gap${embedded ? " cp-embedded" : ""}`}>
         <div className="cg-state cg-state-card">
           <span className="cg-state-icon">!</span>
           <h1>Skill Gap Analysis</h1>

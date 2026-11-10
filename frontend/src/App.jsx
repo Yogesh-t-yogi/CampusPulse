@@ -4,11 +4,9 @@ import { useLocation, useNavigate } from "react-router";
 import api, { SESSION_EXPIRED_EVENT } from "./apiClient";
 
 import Sidebar from "./components/Sidebar";
-import Dashboard from "./pages/Dashboard";
 import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
-import GapAnalysis from "./pages/GapAnalysis";
-import AIRecommendations from "./pages/AIRecommendations";
+import Report from "./pages/Report";
 import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -20,12 +18,17 @@ import ThemeControls from "./components/ThemeControls";
 
 // Each page has its own URL, so refresh and the back button work.
 const PAGE_PATHS = {
-  Dashboard: "/dashboard",
   "Upload Syllabus": "/upload",
   Curriculum: "/curriculum",
   "Job Market": "/jobs",
-  "Gap Analysis": "/gap-analysis",
-  "AI Recommendations": "/recommendations",
+  Report: "/report",
+};
+
+// Old page URLs now open the matching Report tab.
+const LEGACY_PATHS = {
+  "/dashboard": "/report?tab=overview",
+  "/gap-analysis": "/report?tab=skills",
+  "/recommendations": "/report?tab=recommendations",
 };
 
 function pageFromPath(pathname) {
@@ -63,7 +66,7 @@ function App() {
   const defaultPage =
     sessionStorage.getItem("campuspulse_syllabus_id") &&
     sessionStorage.getItem("campuspulse_job_id")
-      ? "Dashboard"
+      ? "Report"
       : "Upload Syllabus";
   const activePage = pageFromPath(location.pathname) || defaultPage;
   const setActivePage = useCallback(
@@ -135,7 +138,9 @@ function App() {
   // Bare "/" or unknown paths go to the default page.
   useEffect(() => {
     if (token && !pageFromPath(location.pathname)) {
-      navigate(PAGE_PATHS[defaultPage], { replace: true });
+      navigate(LEGACY_PATHS[location.pathname] || PAGE_PATHS[defaultPage], {
+        replace: true,
+      });
     }
   }, [token, location.pathname, navigate, defaultPage]);
 
@@ -311,7 +316,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Gap Analysis");
+    setActivePage("Report");
   };
 
   const handleJobCreated = async (job) => {
@@ -319,7 +324,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Gap Analysis");
+    setActivePage("Report");
   };
 
   // Called after the PDF upload succeeds.
@@ -353,6 +358,13 @@ function App() {
     );
   }
 
+  const selectedSyllabusName = syllabi.find(
+    (item) => String(item.id) === String(selectedSyllabusId)
+  )?.name;
+  const selectedJobTitle = jobs.find(
+    (item) => String(item.id) === String(selectedJobId)
+  )?.title;
+
   const renderPage = () => {
     switch (activePage) {
       case "Upload Syllabus":
@@ -382,34 +394,16 @@ function App() {
           />
         );
 
-      case "Gap Analysis":
-        return (
-          <GapAnalysis
-            key={selectedSyllabusId}
-            syllabusId={selectedSyllabusId}
-            jobId={selectedJobId}
-            token={token}
-          />
-        );
-
-      case "AI Recommendations":
-        return (
-          <AIRecommendations
-            key={selectedSyllabusId}
-            syllabusId={selectedSyllabusId}
-            jobId={selectedJobId}
-            token={token}
-          />
-        );
-
-      case "Dashboard":
+      case "Report":
       default:
         return (
-          <Dashboard
-            key={selectedSyllabusId}
+          <Report
+            key={`${selectedSyllabusId}-${selectedJobId}`}
             syllabusId={selectedSyllabusId}
             jobId={selectedJobId}
             token={token}
+            syllabusName={selectedSyllabusName}
+            jobTitle={selectedJobTitle}
           />
         );
     }

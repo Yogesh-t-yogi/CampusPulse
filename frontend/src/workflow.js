@@ -3,9 +3,7 @@ export const WORKFLOW_STEPS = [
   { page: "Upload Syllabus", label: "Upload syllabus" },
   { page: "Curriculum", label: "Review curriculum" },
   { page: "Job Market", label: "Choose job" },
-  { page: "Gap Analysis", label: "Analyze gaps" },
-  { page: "AI Recommendations", label: "Get recommendations" },
-  { page: "Dashboard", label: "Dashboard" },
+  { page: "Report", label: "Report" },
 ];
 
 export function isPageAvailable(page, { hasSyllabus, hasJob }) {

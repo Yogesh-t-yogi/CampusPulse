@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard,
   BookOpen,
   BriefcaseBusiness,
   ChartNoAxesCombined,
@@ -14,9 +13,7 @@ const ICONS = {
   "Upload Syllabus": FileUp,
   Curriculum: BookOpen,
   "Job Market": BriefcaseBusiness,
-  "Gap Analysis": ChartNoAxesCombined,
-  "AI Recommendations": Sparkles,
-  Dashboard: LayoutDashboard,
+  Report: ChartNoAxesCombined,
 };
 
 const STATUS_CHECK_MS = 60000;

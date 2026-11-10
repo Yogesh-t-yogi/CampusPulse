@@ -98,3 +98,79 @@
   background: var(--cp-matched-bg);
   color: var(--cp-matched-ink);
 }
+
+/* Pages shown as tabs inside the Report page: the Report has the one header. */
+.cp-embedded .cg-hero,
+.cp-embedded .cr-hero,
+.cp-embedded .cp-hero,
+.cp-embedded .cg-export-row,
+.cp-embedded .cp-recommendations-panel {
+  display: none;
+}
+
+.cp-embedded {
+  padding-top: 0;
+}
+
+.cp-report-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 32px 0;
+}
+
+.cp-report-header h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+  color: var(--cp-text);
+}
+
+.cp-report-header p {
+  margin: 0;
+  color: var(--cp-text-muted);
+}
+
+.cp-report-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cp-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 20px 32px 0;
+  border-bottom: 1px solid var(--cp-border);
+}
+
+.cp-tab {
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--cp-text-muted);
+  font: 500 14px var(--cp-font);
+  cursor: pointer;
+}
+
+.cp-tab:hover {
+  color: var(--cp-text);
+}
+
+.cp-tab[aria-selected="true"] {
+  border-bottom-color: var(--cp-accent);
+  color: var(--cp-accent);
+}
+
+.cp-report-notice {
+  margin: 12px 32px 0;
+  color: var(--cp-gap);
+}
+
+@media print {
+  .cp-tabs,
+  .cp-report-actions {
+    display: none;
+  }
+}

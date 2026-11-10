@@ -30,7 +30,7 @@ function getLearningResources(skill) {
   ];
 }
 
-function AIRecommendations({ syllabusId, jobId, token }) {
+function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -136,7 +136,7 @@ function AIRecommendations({ syllabusId, jobId, token }) {
 
   if (loading) {
     return (
-      <main className="page-content cp-recs">
+      <main className={`page-content cp-recs${embedded ? " cp-embedded" : ""}`}>
         <div className="cr-state">
           <div className="cr-spinner" />
           <h2>Preparing AI recommendations</h2>
@@ -148,7 +148,7 @@ function AIRecommendations({ syllabusId, jobId, token }) {
 
   if (error) {
     return (
-      <main className="page-content cp-recs">
+      <main className={`page-content cp-recs${embedded ? " cp-embedded" : ""}`}>
         <div className="cr-state cr-state-card">
           <span className="cr-state-icon">!</span>
           <h1>AI Recommendations</h1>
@@ -174,7 +174,7 @@ function AIRecommendations({ syllabusId, jobId, token }) {
   ).length;
 
   return (
-    <main className="page-content cp-recs">
+    <main className={`page-content cp-recs${embedded ? " cp-embedded" : ""}`}>
       <section className="cr-hero">
         <div>
           <span className="cr-eyebrow">PERSONALIZED LEARNING · AI INSIGHTS</span>
