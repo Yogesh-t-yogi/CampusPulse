@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../api";
+import {
+  getProcessingStatus,
+  processSyllabus as runProcessing,
+  waitForProcessing,
+} from "../syllabusProcessing";
 
 function Curriculum({ syllabusId }) {
   const [syllabus, setSyllabus] = useState(null);
@@ -53,6 +58,26 @@ function Curriculum({ syllabusId }) {
 
         if (cancelled) return;
         setSyllabus(response.data);
+
+        // If processing is still running, wait for it and then reload.
+        const status = await getProcessingStatus(syllabusId, token).catch(
+          () => ({})
+        );
+        if (!cancelled && status.status === "PROCESSING") {
+          setProcessing(true);
+          waitForProcessing(syllabusId, token)
+            .catch((waitError) => {
+              if (!cancelled) setProcessingError(waitError.message);
+            })
+            .finally(() => {
+              if (!cancelled) {
+                setProcessing(false);
+                setReloadVersion((version) => version + 1);
+              }
+            });
+        } else if (!cancelled && status.status === "FAILED" && status.message) {
+          setProcessingError(status.message);
+        }
       } catch (err) {
         if (cancelled) return;
 
@@ -95,21 +120,8 @@ function Curriculum({ syllabusId }) {
     setProcessing(true);
     setProcessingError("");
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/ai/syllabus/${syllabusId}/save`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data?.curriculumSaved) {
-        throw new Error(
-          response.data?.error || "The server did not save curriculum content."
-        );
-      }
+      // Runs in the background on the server; wait until it finishes.
+      await runProcessing(syllabusId, token);
 
       setReloadVersion((version) => version + 1);
     } catch (err) {

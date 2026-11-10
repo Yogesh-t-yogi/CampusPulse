@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import axios from "axios";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { API_BASE_URL } from "../api";
+import { processSyllabus } from "../syllabusProcessing";
 
 function SyllabusUpload({ token, onUploaded }) {
   const inputRef = useRef(null);
@@ -81,7 +82,6 @@ function SyllabusUpload({ token, onUploaded }) {
         );
       }
 
-      console.log("PDF upload successful:", uploadResponse.data);
       const uploadedSyllabus = {
         ...uploadResponse.data,
         id: uploadedSyllabusId,
@@ -91,21 +91,21 @@ function SyllabusUpload({ token, onUploaded }) {
         await onUploaded(uploadedSyllabus, false);
       }
 
-      // STEP 3: Process the saved syllabus using AI
+      // STEP 3: Process the saved syllabus using AI. It runs in the
+      // background; we poll its status and show each stage.
       setMessage("PDF uploaded. Processing syllabus content...");
 
-      const processResponse = await axios.post(
-        `${API_BASE_URL}/api/ai/syllabus/${uploadedSyllabusId}/save`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const finalStatus = await processSyllabus(
+        uploadedSyllabusId,
+        token,
+        (status) => status.message && setMessage(status.message)
       );
 
-      console.log("AI processing successful:", processResponse.data);
-      const processingResult = processResponse.data;
+      const hasWarnings = finalStatus.status === "READY_WITH_WARNINGS";
+      const processingResult = {
+        embeddingFailures: hasWarnings ? 1 : 0,
+        embeddingWarning: hasWarnings ? finalStatus.message : "",
+      };
 
       // STEP 4: Refresh the syllabus list in the parent component
       if (onUploaded) {

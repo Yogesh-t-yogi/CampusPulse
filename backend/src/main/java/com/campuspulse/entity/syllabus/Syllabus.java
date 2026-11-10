@@ -39,6 +39,13 @@ public class Syllabus {
     )
     private LocalDateTime createdAt;
 
+    // PROCESSING, READY, READY_WITH_WARNINGS, FAILED (null = uploaded, not processed yet)
+    @Column(name = "processing_status", length = 30)
+    private String processingStatus;
+
+    @Column(name = "processing_message", columnDefinition = "TEXT")
+    private String processingMessage;
+
     @OneToMany(
         mappedBy = "syllabus",
         cascade = CascadeType.ALL,
@@ -54,6 +61,14 @@ public class Syllabus {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+    }
+
+    public String getProcessingStatus() {
+        return processingStatus;
+    }
+
+    public String getProcessingMessage() {
+        return processingMessage;
     }
 
     public Long getId() {

@@ -11,6 +11,7 @@ import com.campuspulse.entity.syllabus.Topic;
 import com.campuspulse.entity.syllabus.Unit;
 import com.campuspulse.repository.embedding.TopicEmbeddingJdbcRepository;
 import com.campuspulse.repository.syllabus.SyllabusRepository;
+import com.campuspulse.repository.syllabus.TopicRepository;
 import com.campuspulse.service.embedding.EmbeddingService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -27,23 +28,29 @@ public class SyllabusPersistenceService {
     private static final int EMBEDDING_BATCH_SIZE = 64;
 
     private final SyllabusRepository syllabusRepository;
+    private final TopicRepository topicRepository;
     private final EmbeddingService embeddingService;
     private final TopicEmbeddingJdbcRepository topicEmbeddingRepository;
 
     public SyllabusPersistenceService(
             SyllabusRepository syllabusRepository,
+            TopicRepository topicRepository,
             EmbeddingService embeddingService,
             TopicEmbeddingJdbcRepository topicEmbeddingRepository) {
 
         this.syllabusRepository = syllabusRepository;
+        this.topicRepository = topicRepository;
         this.embeddingService = embeddingService;
         this.topicEmbeddingRepository = topicEmbeddingRepository;
     }
 
     @Transactional
     public Syllabus saveAiStructure(
-            Syllabus syllabus,
+            Long syllabusId,
             AiSyllabusResponse aiResponse) {
+
+        Syllabus syllabus = syllabusRepository.findById(syllabusId)
+                .orElseThrow(() -> new IllegalArgumentException("Syllabus not found."));
 
         if (aiResponse == null
                 || aiResponse.getSubjects() == null
@@ -53,9 +60,7 @@ public class SyllabusPersistenceService {
         }
 
         // Remove the previous generated structure (vectors first, then topics).
-        if (syllabus.getId() != null) {
-            topicEmbeddingRepository.deleteBySyllabusId(syllabus.getId());
-        }
+        topicEmbeddingRepository.deleteBySyllabusId(syllabusId);
         syllabus.getSubjects().clear();
 
         for (AiSubject aiSubject : aiResponse.getSubjects()) {
@@ -91,11 +96,8 @@ public class SyllabusPersistenceService {
     }
 
     public EmbeddingGenerationResult generateEmbeddings(
-            Syllabus syllabus) {
-        List<Topic> topics = syllabus.getSubjects().stream()
-                .flatMap(subject -> subject.getUnits().stream())
-                .flatMap(unit -> unit.getTopics().stream())
-                .toList();
+            Long syllabusId) {
+        List<Topic> topics = topicRepository.findBySyllabusId(syllabusId);
 
         int generated = 0;
         int failed = 0;
