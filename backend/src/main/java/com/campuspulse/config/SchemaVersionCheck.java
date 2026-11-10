@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 public class SchemaVersionCheck implements ApplicationRunner {
 
     /** Highest migration in src/main/resources/db/migration. Update with each new V*.sql. */
-    static final int EXPECTED_VERSION = 4;
+    static final int EXPECTED_VERSION = 5;
 
     private static final Logger log = LoggerFactory.getLogger(SchemaVersionCheck.class);
 
@@ -44,7 +44,7 @@ public class SchemaVersionCheck implements ApplicationRunner {
                     ************************************************************
                     DATABASE NOT MIGRATED: schema version {} but the app needs {}.
                     Flyway did not run. Start the backend with
-                        .\mvnw.cmd spring-boot:run
+                        mvnw.cmd spring-boot:run   (in the backend folder)
                     (or reload the Java project in your IDE so it picks up pom.xml),
                     then restart. Until then uploads and lists will fail.
                     ************************************************************""",
