@@ -12,6 +12,8 @@ import {
   Lock,
   Sparkles,
   TrendingUp,
+  UserRound,
+  Route,
   Users as UsersIcon,
 } from "lucide-react";
 import api from "../apiClient";
@@ -38,11 +40,16 @@ const GROUPS = [
     ],
   },
   {
-    title: "Tools",
+    title: "My growth",
     items: [
-      { page: "Market insights", label: "Market insights", icon: TrendingUp },
+      { page: "My profile", label: "My profile", icon: UserRound },
+      { page: "Learning plan", label: "Learning plan", icon: Route },
       { page: "Resume match", label: "Resume match", icon: FileUser },
     ],
+  },
+  {
+    title: "Tools",
+    items: [{ page: "Market insights", label: "Market insights", icon: TrendingUp }],
   },
   {
     title: "Admin",

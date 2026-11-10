@@ -10,6 +10,11 @@ import Home from "./pages/Home";
 import Syllabi from "./pages/Syllabi";
 import JobCatalog from "./pages/JobCatalog";
 import Organisation from "./pages/Organisation";
+import StudentHome from "./pages/StudentHome";
+import StudentProfile from "./pages/StudentProfile";
+import LearningPlan from "./pages/LearningPlan";
+import ResumeMatch from "./pages/ResumeMatch";
+import MarketInsights from "./pages/MarketInsights";
 import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
 import Report from "./pages/Report";
@@ -40,6 +45,8 @@ const PAGE_PATHS = {
   "Resume match": "/resume",
   "Job catalog": "/catalog",
   Organisation: "/organisation",
+  "My profile": "/profile",
+  "Learning plan": "/learning",
   Users: "/users",
 };
 
@@ -497,6 +504,9 @@ function App() {
 
     switch (activePage) {
       case "Home":
+        if (role === "STUDENT") {
+          return <StudentHome user={currentUser} setActivePage={setActivePage} />;
+        }
         return (
           <Home
             user={currentUser}
@@ -558,28 +568,16 @@ function App() {
         );
 
       case "Market insights":
-        return (
-          <JobMarket
-            key="insights"
-            section="insights"
-            isAdmin={isAdmin}
-            selectedJobId={selectedJobId}
-            hasSyllabus={Boolean(selectedSyllabusId)}
-            onJobSelected={handleJobSelected}
-          />
-        );
+        return <MarketInsights user={currentUser} selectedSyllabusId={selectedSyllabusId} syllabi={syllabi} />;
 
       case "Resume match":
-        return (
-          <JobMarket
-            key="resume"
-            section="resume"
-            isAdmin={isAdmin}
-            selectedJobId={selectedJobId}
-            hasSyllabus={Boolean(selectedSyllabusId)}
-            onJobSelected={handleJobSelected}
-          />
-        );
+        return <ResumeMatch setActivePage={setActivePage} />;
+
+      case "My profile":
+        return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} />;
+
+      case "Learning plan":
+        return <LearningPlan setActivePage={setActivePage} />;
 
       case "Organisation":
         return (

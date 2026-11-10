@@ -13,6 +13,8 @@ const PAGE_ROLES = {
   Report: ALL,
   "Market insights": ALL,
   "Resume match": ["SUPER_ADMIN", "ADMIN", "STUDENT"],
+  "My profile": ["STUDENT"],
+  "Learning plan": ["STUDENT"],
   "Job catalog": ["SUPER_ADMIN", "ADMIN"],
   Organisation: ["SUPER_ADMIN", "ADMIN", "HOD"],
   Users: ["SUPER_ADMIN", "ADMIN", "HOD"],
