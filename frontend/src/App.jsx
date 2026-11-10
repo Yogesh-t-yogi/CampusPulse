@@ -17,7 +17,7 @@ import LearningPlan from "./pages/LearningPlan";
 import ResumeMatch from "./pages/ResumeMatch";
 import MarketInsights from "./pages/MarketInsights";
 import Curriculum from "./pages/Curriculum";
-import JobMarket from "./pages/JobMarket";
+import ChooseJob from "./pages/ChooseJob";
 import Report from "./pages/Report";
 import Users from "./pages/Users";
 import { canSeePage } from "./permissions";
@@ -557,15 +557,12 @@ function App() {
 
       case "Job Market":
         return (
-          <JobMarket
-            key="choose"
-            section="choose"
+          <ChooseJob
             isAdmin={isAdmin}
             selectedJobId={selectedJobId}
             hasSyllabus={Boolean(selectedSyllabusId)}
             onJobCreated={handleJobCreated}
             onJobSelected={handleJobSelected}
-            onCatalogImported={refreshJobs}
           />
         );
 

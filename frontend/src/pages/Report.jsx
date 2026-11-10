@@ -3,9 +3,7 @@ import { useSearchParams } from "react-router";
 import { FileSpreadsheet, FileText, Printer, RefreshCw } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import { Button, PageHeader } from "../ui";
-import Dashboard from "./Dashboard";
-import GapAnalysis from "./GapAnalysis";
-import AIRecommendations from "./AIRecommendations";
+import { ReportOverview, ReportRecommendations, ReportSkills } from "./report/ReportTabs";
 import CompareJobs from "./CompareJobs";
 import OutcomesReport from "./OutcomesReport";
 import ReportHistory from "./ReportHistory";
@@ -125,8 +123,8 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
       </div>
 
       <div role="tabpanel">
-        {tab === "overview" && <Dashboard key={`o-${version}`} {...pageProps} />}
-        {tab === "skills" && <GapAnalysis key={`s-${version}`} {...pageProps} />}
+        {tab === "overview" && <ReportOverview key={`o-${version}`} {...pageProps} />}
+        {tab === "skills" && <ReportSkills key={`s-${version}`} {...pageProps} />}
         {tab === "outcomes" && (
           <OutcomesReport key={`co-${version}`} syllabusId={syllabusId} jobId={jobId} />
         )}
@@ -135,7 +133,7 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
           <CompareJobs syllabusId={syllabusId} jobs={jobs} currentJobId={jobId} />
         )}
         {tab === "recommendations" && (
-          <AIRecommendations key={`r-${version}`} {...pageProps} role={role} />
+          <ReportRecommendations key={`r-${version}`} {...pageProps} role={role} />
         )}
       </div>
     </div>

@@ -192,3 +192,12 @@
 .shell-college-chip small { font-weight: 500; opacity: 0.85; }
 .shell-college { color: var(--cp-accent); }
 .shell-page { display: contents; }
+
+/* Phone (046): nav becomes one scrollable row instead of a tall block. */
+@media (max-width: 640px) {
+  .shell-nav { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 6px; scrollbar-width: thin; }
+  .shell-nav-group { display: contents; }
+  .shell-nav-title { display: none; }
+  .shell-nav a, .shell-nav button { flex: none; white-space: nowrap; }
+  .shell-topbar { flex-wrap: wrap; gap: 8px; }
+}
