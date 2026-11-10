@@ -277,6 +277,19 @@ A new database may not contain the demo syllabus or job records from your origin
 
 Press `Ctrl+C` in the frontend, backend, and Python service terminals. PostgreSQL can remain running as a Windows service.
 
+## Quick start (one command, Windows)
+
+After the one-time setup above (PostgreSQL with pgvector, Java 17, Node.js, Python 3.12):
+
+```powershell
+Copy-Item .env.example .env   # once; fill in DB_PASSWORD, GROQ_API_KEY, JWT_SECRET
+.\start-dev.cmd              # or double-click start-dev.cmd
+```
+
+It opens three windows (AI service :8000, backend :8081, frontend :5173), creates the
+Python environment and installs frontend packages on first run, waits for the backend and
+opens http://localhost:5173. Close a window to stop that server.
+
 ## 10. Run Everything with Docker (optional)
 
 Requires Docker Desktop. From the repository root:
