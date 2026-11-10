@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, RefreshCw } from "lucide-react";
+import { FileSpreadsheet, FileText, Printer, RefreshCw } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import { Button, PageHeader } from "../ui";
 import Dashboard from "./Dashboard";
@@ -48,6 +48,31 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
     }
   };
 
+  const [exporting, setExporting] = useState("");
+
+  // Server-made file (college, date, skills, recommendations, PO coverage).
+  const download = async (kind) => {
+    setExporting(kind);
+    setNotice("");
+    try {
+      const { data } = await api.get(`/api/export/report/${kind}`, {
+        params: { syllabusId, jobId },
+        responseType: "blob",
+      });
+      const slug = `${syllabusName || "syllabus"}-${jobTitle || "job"}`.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `gap-report-${slug}.${kind === "pdf" ? "pdf" : "xlsx"}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setNotice(errorMessage(error, "Couldn't create the file. Try again."));
+    } finally {
+      setExporting("");
+    }
+  };
+
   const pageProps = { syllabusId, jobId, token, embedded: true };
 
   return (
@@ -62,8 +87,14 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
               <Button icon={RefreshCw} onClick={rerun} disabled={rerunning || !syllabusId || !jobId}>
                 {rerunning ? "Re-running…" : "Re-run analysis"}
               </Button>
-              <Button variant="primary" icon={Download} onClick={() => window.print()}>
-                Export PDF
+              <Button icon={Printer} onClick={() => window.print()}>
+                Print
+              </Button>
+              <Button icon={FileSpreadsheet} onClick={() => download("excel")} disabled={!!exporting || !syllabusId || !jobId}>
+                {exporting === "excel" ? "Preparing…" : "Excel"}
+              </Button>
+              <Button variant="primary" icon={FileText} onClick={() => download("pdf")} disabled={!!exporting || !syllabusId || !jobId}>
+                {exporting === "pdf" ? "Preparing…" : "Download PDF"}
               </Button>
             </>
           }
