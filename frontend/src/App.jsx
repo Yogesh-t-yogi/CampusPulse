@@ -244,11 +244,8 @@ function App() {
       const savedExists = userJobs.some(
         (job) => String(job.id) === String(savedId)
       );
-      const nextId = savedExists
-        ? savedId
-        : userJobs.length
-          ? String(userJobs[0].id)
-          : "";
+      // Never pick a job automatically: choosing one is a workflow step.
+      const nextId = savedExists ? savedId : "";
 
       setJobs(userJobs);
       setSelectedJobId(nextId);
@@ -314,7 +311,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Curriculum");
+    setActivePage("Gap Analysis");
   };
 
   const handleJobCreated = async (job) => {
@@ -322,7 +319,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Curriculum");
+    setActivePage("Gap Analysis");
   };
 
   // Called after the PDF upload succeeds.
@@ -434,6 +431,8 @@ function App() {
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
+        hasSyllabus={Boolean(selectedSyllabusId)}
+        hasJob={Boolean(selectedJobId)}
       />
 
       <main className="main-content">
@@ -486,7 +485,9 @@ function App() {
                   {syllabus.name ||
                     syllabus.fileName ||
                     `Syllabus ${syllabus.id}`}
-                  {" "}(ID: {syllabus.id})
+                  {syllabus.createdAt
+                    ? ` · ${new Date(syllabus.createdAt).toLocaleDateString()}`
+                    : ""}
                 </option>
               ))}
             </select>

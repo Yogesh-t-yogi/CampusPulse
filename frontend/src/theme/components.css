@@ -82,3 +82,19 @@
   border-color: var(--cp-gap);
   color: var(--cp-gap);
 }
+
+/* Sidebar status light + disabled items */
+.ai-status-ok .status-dot { background: var(--cp-matched); }
+.ai-status-warn .status-dot { background: var(--cp-partial); }
+.ai-status-down .status-dot { background: var(--cp-gap); }
+.ai-status-checking .status-dot { background: var(--cp-text-muted); }
+
+.sidebar .nav-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cp-workflow-step.done .cp-workflow-number {
+  background: var(--cp-matched-bg);
+  color: var(--cp-matched-ink);
+}

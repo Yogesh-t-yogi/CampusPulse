@@ -39,6 +39,7 @@ function Dashboard({ token, syllabusId, jobId }) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState("");
 
@@ -199,7 +200,7 @@ function Dashboard({ token, syllabusId, jobId }) {
 
     };
 
-  }, [syllabusId, jobId, token]);
+  }, [syllabusId, jobId, token, reloadKey]);
 
   if (loading) {
 
@@ -241,7 +242,7 @@ function Dashboard({ token, syllabusId, jobId }) {
 
             className="cp-primary-button"
 
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadKey((key) => key + 1)}
 
           >
 

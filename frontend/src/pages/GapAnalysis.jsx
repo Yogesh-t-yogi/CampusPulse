@@ -6,6 +6,7 @@ function GapAnalysis({ syllabusId, jobId, token }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +79,7 @@ function GapAnalysis({ syllabusId, jobId, token }) {
     return () => {
       cancelled = true;
     };
-  }, [syllabusId, jobId, token]);
+  }, [syllabusId, jobId, token, reloadKey]);
 
   if (loading) {
     return (
@@ -102,7 +103,7 @@ function GapAnalysis({ syllabusId, jobId, token }) {
           <button
             type="button"
             className="cg-primary-button"
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadKey((key) => key + 1)}
           >
             Try again
           </button>

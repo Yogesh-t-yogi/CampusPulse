@@ -281,7 +281,7 @@ function Curriculum({ syllabusId }) {
           <p>{error || "Curriculum data is unavailable."}</p>
           <button
             className="cc-button cc-button-primary"
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadVersion((version) => version + 1)}
           >
             Try again
           </button>
