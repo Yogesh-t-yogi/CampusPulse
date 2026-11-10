@@ -125,3 +125,6 @@ ai-service/.env
 
 # Claude discussion / memory workspace (local only)
 _claude/
+
+# Raw third-party downloads (O*NET etc.) - large, kept local
+data/external/

@@ -10,6 +10,8 @@ Mirrors the backend:
 
 Run from ai-service/ with the venv:
     python tools/calibrate.py ../data/eval/skill-topic-pairs.csv
+Compare another 384-dim model (downloads it once into the FastEmbed cache):
+    python tools/calibrate.py ../data/eval/skill-topic-pairs.csv BAAI/bge-small-en-v1.5
 """
 
 import csv
@@ -67,12 +69,12 @@ def score(rows, sims, m, p):
     return correct / len(rows), missed, invented
 
 
-def main(path):
+def main(path, model_id=MODEL_ID):
     rows = list(csv.DictReader(Path(path).open(encoding="utf-8")))
     for row in rows:
         row["kw"] = keyword_status(row["skill"], row["topic_name"], row["topic_description"])
 
-    model = TextEmbedding(model_name=MODEL_ID)
+    model = TextEmbedding(model_name=model_id)
     topic_vecs = list(model.embed([f'{r["topic_name"]} {r["topic_description"]}' for r in rows]))
 
     def cos(a, b):
@@ -107,4 +109,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "../data/eval/skill-topic-pairs.csv")
+    main(
+        sys.argv[1] if len(sys.argv) > 1 else "../data/eval/skill-topic-pairs.csv",
+        sys.argv[2] if len(sys.argv) > 2 else MODEL_ID,
+    )
