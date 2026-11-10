@@ -1,12 +1,10 @@
 
 package com.campuspulse.controller.recommendation;
 
-import com.campuspulse.dto.matching.SemanticGapReport;
 import com.campuspulse.dto.recommendation.AiRecommendation;
 import com.campuspulse.service.CurrentUserService;
-import com.campuspulse.service.matching.SemanticMatchingService;
+import com.campuspulse.service.analysis.AnalysisResultService;
 import com.campuspulse.service.job.JobPostingService;
-import com.campuspulse.service.recommendation.AiRecommendationService;
 import com.campuspulse.service.syllabus.SyllabusService;
 
 import org.springframework.http.HttpStatus;
@@ -19,21 +17,17 @@ import java.util.List;
 @RequestMapping("/api/recommendations")
 public class AiRecommendationController {
 
-    private final SemanticMatchingService semanticMatchingService;
-    private final AiRecommendationService aiRecommendationService;
+    private final AnalysisResultService analysisResultService;
     private final SyllabusService syllabusService;
     private final CurrentUserService currentUserService;
     private final JobPostingService jobPostingService;
 
     public AiRecommendationController(
-            SemanticMatchingService semanticMatchingService,
-            AiRecommendationService aiRecommendationService,
+            AnalysisResultService analysisResultService,
             SyllabusService syllabusService,
             CurrentUserService currentUserService,
             JobPostingService jobPostingService) {
-
-        this.semanticMatchingService = semanticMatchingService;
-        this.aiRecommendationService = aiRecommendationService;
+        this.analysisResultService = analysisResultService;
         this.syllabusService = syllabusService;
         this.currentUserService = currentUserService;
         this.jobPostingService = jobPostingService;
@@ -43,7 +37,8 @@ public class AiRecommendationController {
     @GetMapping("/jobs/{jobId}/syllabus/{syllabusId}")
     public List<AiRecommendation> generateRecommendations(
             @PathVariable Long jobId,
-            @PathVariable Long syllabusId) {
+            @PathVariable Long syllabusId,
+            @RequestParam(defaultValue = "false") boolean refresh) {
 
         // Verify syllabus ownership before generating recommendations
         Long userId = currentUserService.getCurrentUser().getId();
@@ -60,13 +55,7 @@ public class AiRecommendationController {
         }
         jobPostingService.requireAccessibleJob(jobId, userId);
 
-        SemanticGapReport gapReport =
-                semanticMatchingService.generateGapReport(
-                        jobId,
-                        syllabusId
-                );
-
-        return aiRecommendationService
-                .generateRecommendations(gapReport);
+        // Saved result unless refresh=true (avoids a new LLM call per page view).
+        return analysisResultService.getRecommendations(jobId, syllabusId, refresh);
     }
 }

@@ -2,6 +2,7 @@ package com.campuspulse.controller.job;
 
 import com.campuspulse.entity.job.JobRequiredSkill;
 import com.campuspulse.service.CurrentUserService;
+import com.campuspulse.service.analysis.AnalysisResultService;
 import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.job.JobSkillService;
 import org.springframework.web.bind.annotation.*;
@@ -18,14 +19,17 @@ public class JobSkillController {
     private final JobSkillService jobSkillService;
     private final JobPostingService jobPostingService;
     private final CurrentUserService currentUserService;
+    private final AnalysisResultService analysisResultService;
 
     public JobSkillController(
             JobSkillService jobSkillService,
             JobPostingService jobPostingService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            AnalysisResultService analysisResultService) {
         this.jobSkillService = jobSkillService;
         this.jobPostingService = jobPostingService;
         this.currentUserService = currentUserService;
+        this.analysisResultService = analysisResultService;
     }
 
     @PostMapping("/{jobId}/skills")
@@ -35,7 +39,9 @@ public class JobSkillController {
 
         jobPostingService.requireModifiableJob(
                 jobId, currentUserService.getCurrentUser());
-        return jobSkillService.addSkill(jobId, skill);
+        JobRequiredSkill added = jobSkillService.addSkill(jobId, skill);
+        analysisResultService.clearForJob(jobId);
+        return added;
     }
 
     @GetMapping("/{jobId}/skills")

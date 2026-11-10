@@ -4,6 +4,7 @@ package com.campuspulse.controller.ai;
 import com.campuspulse.dto.ai.AiSyllabusResponse;
 import com.campuspulse.entity.syllabus.Syllabus;
 import com.campuspulse.service.CurrentUserService;
+import com.campuspulse.service.analysis.AnalysisResultService;
 import com.campuspulse.service.ai.SyllabusAiService;
 import com.campuspulse.service.ai.SyllabusPersistenceService;
 import com.campuspulse.service.syllabus.SyllabusService;
@@ -21,17 +22,20 @@ public class SyllabusAiController {
     private final SyllabusAiService syllabusAiService;
     private final SyllabusPersistenceService syllabusPersistenceService;
     private final CurrentUserService currentUserService;
+    private final AnalysisResultService analysisResultService;
 
     public SyllabusAiController(
             SyllabusService syllabusService,
             SyllabusAiService syllabusAiService,
             SyllabusPersistenceService syllabusPersistenceService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            AnalysisResultService analysisResultService) {
 
         this.syllabusService = syllabusService;
         this.syllabusAiService = syllabusAiService;
         this.syllabusPersistenceService = syllabusPersistenceService;
         this.currentUserService = currentUserService;
+        this.analysisResultService = analysisResultService;
     }
 
     // STRUCTURE SYLLABUS USING AI
@@ -98,6 +102,8 @@ public class SyllabusAiController {
         );
         SyllabusPersistenceService.EmbeddingGenerationResult embeddings =
                 syllabusPersistenceService.generateEmbeddings(savedSyllabus);
+        // Curriculum changed: old saved reports are no longer valid.
+        analysisResultService.clearForSyllabus(savedSyllabus.getId());
 
         return ResponseEntity.ok(Map.of(
                 "syllabusId", savedSyllabus.getId(),

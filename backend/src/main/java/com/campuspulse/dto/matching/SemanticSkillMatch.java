@@ -1,5 +1,8 @@
 package com.campuspulse.dto.matching;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class SemanticSkillMatch {
 
     private String skill;
@@ -8,12 +11,13 @@ public class SemanticSkillMatch {
     private double similarity;
     private String status;
 
+    @JsonCreator
     public SemanticSkillMatch(
-            String skill,
-            Long topicId,
-            String topic,
-            double similarity,
-            String status) {
+            @JsonProperty("skill") String skill,
+            @JsonProperty("topicId") Long topicId,
+            @JsonProperty("topic") String topic,
+            @JsonProperty("similarity") double similarity,
+            @JsonProperty("status") String status) {
 
         this.skill = skill;
         this.topicId = topicId;

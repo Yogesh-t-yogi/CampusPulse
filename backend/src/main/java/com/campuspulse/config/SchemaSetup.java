@@ -29,5 +29,18 @@ public class SchemaSetup implements ApplicationRunner {
                     created_at TIMESTAMP NOT NULL DEFAULT now()
                 )
                 """);
+
+        // Latest saved gap report + recommendations per syllabus/job pair.
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS analysis_result (
+                    id                   BIGSERIAL PRIMARY KEY,
+                    syllabus_id          BIGINT NOT NULL REFERENCES syllabus(id) ON DELETE CASCADE,
+                    job_id               BIGINT NOT NULL REFERENCES job_posting(id) ON DELETE CASCADE,
+                    report_json          TEXT,
+                    recommendations_json TEXT,
+                    updated_at           TIMESTAMP NOT NULL DEFAULT now(),
+                    UNIQUE (syllabus_id, job_id)
+                )
+                """);
     }
 }

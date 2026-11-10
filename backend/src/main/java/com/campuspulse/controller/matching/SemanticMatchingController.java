@@ -4,6 +4,7 @@ package com.campuspulse.controller.matching;
 import com.campuspulse.dto.matching.SemanticSkillMatch;
 import com.campuspulse.dto.matching.SemanticGapReport;
 import com.campuspulse.service.CurrentUserService;
+import com.campuspulse.service.analysis.AnalysisResultService;
 import com.campuspulse.service.matching.SemanticMatchingService;
 import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.syllabus.SyllabusService;
@@ -22,17 +23,20 @@ public class SemanticMatchingController {
     private final SyllabusService syllabusService;
     private final CurrentUserService currentUserService;
     private final JobPostingService jobPostingService;
+    private final AnalysisResultService analysisResultService;
 
     public SemanticMatchingController(
             SemanticMatchingService semanticMatchingService,
             SyllabusService syllabusService,
             CurrentUserService currentUserService,
-            JobPostingService jobPostingService) {
+            JobPostingService jobPostingService,
+            AnalysisResultService analysisResultService) {
 
         this.semanticMatchingService = semanticMatchingService;
         this.syllabusService = syllabusService;
         this.currentUserService = currentUserService;
         this.jobPostingService = jobPostingService;
+        this.analysisResultService = analysisResultService;
     }
 
     // SEMANTIC SKILL MATCHING
@@ -54,15 +58,14 @@ public class SemanticMatchingController {
     @GetMapping("/report/jobs/{jobId}/syllabus/{syllabusId}")
     public SemanticGapReport generateGapReport(
             @PathVariable Long jobId,
-            @PathVariable Long syllabusId) {
+            @PathVariable Long syllabusId,
+            @RequestParam(defaultValue = "false") boolean refresh) {
 
         verifySyllabusOwnership(syllabusId);
         verifyJobAccess(jobId);
 
-        return semanticMatchingService.generateGapReport(
-                jobId,
-                syllabusId
-        );
+        // Saved result unless refresh=true.
+        return analysisResultService.getReport(jobId, syllabusId, refresh);
     }
 
     // VERIFY THAT THE CURRENT USER OWNS THE SYLLABUS
