@@ -5,6 +5,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -13,6 +18,8 @@ import java.util.List;
 
 @Service
 public class PythonEmbeddingService implements EmbeddingService {
+
+    private static final Logger log = LoggerFactory.getLogger(PythonEmbeddingService.class);
 
     private final WebClient webClient;
 
@@ -62,16 +69,18 @@ public class PythonEmbeddingService implements EmbeddingService {
             return List.of();
         }
 
-        BatchEmbeddingResponse response = webClient.post()
-                .uri("/embed/batch")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new BatchEmbeddingRequest(texts))
-                .retrieve()
-                .bodyToMono(BatchEmbeddingResponse.class)
-                .timeout(Duration.ofSeconds(120), Mono.error(
-                        new IllegalStateException(
-                                "The AI embedding service did not respond within 120 seconds.")))
-                .block();
+        BatchEmbeddingResponse response;
+        try {
+            response = requestBatch(texts);
+        } catch (WebClientResponseException.NotFound e) {
+            // Older AI service without /embed/batch: embed one text at a time.
+            log.warn("AI service has no /embed/batch; falling back to /embed. Restart the AI service to update it.");
+            List<List<Double>> vectors = new ArrayList<>();
+            for (String text : texts) {
+                vectors.add(generateEmbedding(text));
+            }
+            return vectors;
+        }
 
         if (response == null
                 || response.embeddings() == null
@@ -82,6 +91,19 @@ public class PythonEmbeddingService implements EmbeddingService {
         }
 
         return response.embeddings();
+    }
+
+    private BatchEmbeddingResponse requestBatch(List<String> texts) {
+        return webClient.post()
+                .uri("/embed/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new BatchEmbeddingRequest(texts))
+                .retrieve()
+                .bodyToMono(BatchEmbeddingResponse.class)
+                .timeout(Duration.ofSeconds(120), Mono.error(
+                        new IllegalStateException(
+                                "The AI embedding service did not respond within 120 seconds.")))
+                .block();
     }
 
     private record EmbeddingRequest(String text) {

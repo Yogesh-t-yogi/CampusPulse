@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import api from "../apiClient";
+import api, { errorMessage } from "../apiClient";
 
 import {
 
@@ -183,7 +183,7 @@ function Dashboard({ token, syllabusId, jobId, embedded = false }) {
 
         } else {
 
-          setError("Unable to load analytics. Please try again.");
+          setError(errorMessage(err, "Unable to load analytics. Please try again."));
 
         }
 

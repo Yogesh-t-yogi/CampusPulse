@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import api from "../apiClient";
+import api, { errorMessage } from "../apiClient";
 
 function GapAnalysis({ syllabusId, jobId, token, embedded = false }) {
   const [report, setReport] = useState(null);
@@ -67,7 +67,7 @@ function GapAnalysis({ syllabusId, jobId, token, embedded = false }) {
         } else if (!err.response) {
           setError("Cannot connect to the backend on port 8081.");
         } else {
-          setError("Failed to load the skill gap report. Please try again.");
+          setError(errorMessage(err, "Failed to load the skill gap report. Please try again."));
         }
       } finally {
         if (!cancelled) setLoading(false);

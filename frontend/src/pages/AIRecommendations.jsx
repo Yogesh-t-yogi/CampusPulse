@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import api from "../apiClient";
+import api, { errorMessage } from "../apiClient";
 
 const OFFICIAL_SKILL_DOCS = {
   java: "https://dev.java/learn/",
@@ -100,7 +100,7 @@ function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
         } else if (!err.response) {
           setError("Cannot connect to the backend on port 8081.");
         } else {
-          setError("Failed to load AI recommendations. Please try again.");
+          setError(errorMessage(err, "Failed to load AI recommendations. Please try again."));
         }
       } finally {
         if (!cancelled) setLoading(false);
