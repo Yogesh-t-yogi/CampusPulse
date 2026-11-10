@@ -5,16 +5,18 @@ import api, { errorMessage } from "../apiClient";
 import Dashboard from "./Dashboard";
 import GapAnalysis from "./GapAnalysis";
 import AIRecommendations from "./AIRecommendations";
+import CompareJobs from "./CompareJobs";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "skills", label: "Skill by skill" },
   { id: "recommendations", label: "Recommendations" },
+  { id: "compare", label: "Compare jobs" },
 ];
 
 // One report for the selected syllabus + job. Results are saved on the server;
 // "Re-run analysis" recomputes them.
-function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role }) {
+function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs = [] }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get("tab");
   const tab = TABS.some((item) => item.id === requested) ? requested : "overview";
@@ -25,6 +27,7 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role }) {
   const [notice, setNotice] = useState("");
 
   const selectTab = (id) => setSearchParams({ tab: id }, { replace: true });
+  // Re-run applies to the selected job; the compare tab uses saved results per job.
 
   const rerun = async () => {
     setRerunning(true);
@@ -99,6 +102,9 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role }) {
       <div role="tabpanel">
         {tab === "overview" && <Dashboard key={`o-${version}`} {...pageProps} />}
         {tab === "skills" && <GapAnalysis key={`s-${version}`} {...pageProps} />}
+        {tab === "compare" && (
+          <CompareJobs syllabusId={syllabusId} jobs={jobs} currentJobId={jobId} />
+        )}
         {tab === "recommendations" && (
           <AIRecommendations key={`r-${version}`} {...pageProps} role={role} />
         )}

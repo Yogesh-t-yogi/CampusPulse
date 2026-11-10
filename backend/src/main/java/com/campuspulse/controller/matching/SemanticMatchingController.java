@@ -5,6 +5,7 @@ import com.campuspulse.dto.matching.SemanticSkillMatch;
 import com.campuspulse.dto.matching.SemanticGapReport;
 import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.analysis.AnalysisResultService;
+import com.campuspulse.service.analysis.MultiRoleReportService;
 import com.campuspulse.service.matching.SemanticMatchingService;
 import com.campuspulse.service.job.JobPostingService;
 import com.campuspulse.service.syllabus.SyllabusService;
@@ -24,19 +25,22 @@ public class SemanticMatchingController {
     private final CurrentUserService currentUserService;
     private final JobPostingService jobPostingService;
     private final AnalysisResultService analysisResultService;
+    private final MultiRoleReportService multiRoleReportService;
 
     public SemanticMatchingController(
             SemanticMatchingService semanticMatchingService,
             SyllabusService syllabusService,
             CurrentUserService currentUserService,
             JobPostingService jobPostingService,
-            AnalysisResultService analysisResultService) {
+            AnalysisResultService analysisResultService,
+            MultiRoleReportService multiRoleReportService) {
 
         this.semanticMatchingService = semanticMatchingService;
         this.syllabusService = syllabusService;
         this.currentUserService = currentUserService;
         this.jobPostingService = jobPostingService;
         this.analysisResultService = analysisResultService;
+        this.multiRoleReportService = multiRoleReportService;
     }
 
     // SEMANTIC SKILL MATCHING
@@ -66,6 +70,17 @@ public class SemanticMatchingController {
 
         // Saved result unless refresh=true.
         return analysisResultService.getReport(jobId, syllabusId, refresh);
+    }
+
+    // ONE SYLLABUS VS SEVERAL JOBS (max 10), e.g. ?syllabusId=3&jobIds=1,4,7
+    @GetMapping("/report/multi")
+    public MultiRoleReportService.MultiRoleReport multiRoleReport(
+            @RequestParam Long syllabusId,
+            @RequestParam List<Long> jobIds) {
+
+        verifySyllabusOwnership(syllabusId);
+        return multiRoleReportService.build(
+                syllabusId, jobIds, currentUserService.getCurrentUser().getId());
     }
 
     // VERIFY THAT THE CURRENT USER OWNS THE SYLLABUS

@@ -492,6 +492,7 @@ function App() {
             syllabusName={selectedSyllabusName}
             jobTitle={selectedJobTitle}
             role={role}
+            jobs={jobs}
           />
         );
     }

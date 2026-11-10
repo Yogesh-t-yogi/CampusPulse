@@ -311,3 +311,143 @@
   color: var(--cp-gap);
   font-size: 13px;
 }
+
+/* Compare jobs (multi-role report) */
+.cp-compare {
+  padding: 20px 32px;
+}
+
+.cp-compare-picker {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius-card);
+  background: var(--cp-card);
+}
+
+.cp-compare-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.cp-compare-picker-head h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--cp-text);
+}
+
+.cp-compare-picker-head span,
+.cp-compare-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cp-text-muted);
+}
+
+.cp-compare-filter {
+  padding: 8px 10px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-page);
+  color: var(--cp-text);
+}
+
+.cp-compare-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.cp-compare-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-radius: var(--cp-radius);
+  color: var(--cp-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cp-compare-option:hover {
+  background: var(--cp-accent-tint);
+}
+
+.cp-compare-option small {
+  color: var(--cp-text-muted);
+}
+
+.cp-compare-picker > .cp-button {
+  justify-self: start;
+}
+
+.cp-compare-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cp-compare-metric {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius-card);
+  background: var(--cp-card);
+}
+
+.cp-compare-metric span,
+.cp-compare-metric small {
+  color: var(--cp-text-muted);
+  font-size: 13px;
+}
+
+.cp-compare-metric strong {
+  color: var(--cp-text);
+  font-size: 28px;
+}
+
+.cp-compare .cp-table-wrap {
+  margin: 16px 0 0;
+}
+
+.cp-heatmap th small,
+.cp-heatmap td small {
+  display: block;
+  margin-top: 2px;
+  color: var(--cp-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.cp-heatmap-empty {
+  color: var(--cp-text-muted);
+  text-align: center;
+}
+
+.cp-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cp-status-matched {
+  background: var(--cp-matched-bg);
+  color: var(--cp-matched-ink);
+}
+
+.cp-status-partial {
+  background: var(--cp-partial-bg);
+  color: var(--cp-partial-ink);
+}
+
+.cp-status-gap {
+  background: var(--cp-gap-bg);
+  color: var(--cp-gap-ink);
+}
