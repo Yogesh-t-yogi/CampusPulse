@@ -11,6 +11,7 @@ import Syllabi from "./pages/Syllabi";
 import JobCatalog from "./pages/JobCatalog";
 import Organisation from "./pages/Organisation";
 import StudentHome from "./pages/StudentHome";
+import DepartmentDashboard from "./pages/DepartmentDashboard";
 import StudentProfile from "./pages/StudentProfile";
 import LearningPlan from "./pages/LearningPlan";
 import ResumeMatch from "./pages/ResumeMatch";
@@ -46,6 +47,7 @@ const PAGE_PATHS = {
   "Job catalog": "/catalog",
   Organisation: "/organisation",
   "My profile": "/profile",
+  "Department dashboard": "/dashboard-department",
   "Learning plan": "/learning",
   Users: "/users",
 };
@@ -575,6 +577,9 @@ function App() {
 
       case "My profile":
         return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} />;
+
+      case "Department dashboard":
+        return <DepartmentDashboard user={currentUser} jobs={jobs} />;
 
       case "Learning plan":
         return <LearningPlan setActivePage={setActivePage} />;

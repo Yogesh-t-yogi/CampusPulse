@@ -6,6 +6,7 @@ const STAFF = ["SUPER_ADMIN", "ADMIN", "HOD", "FACULTY"];
 
 const PAGE_ROLES = {
   Home: ALL,
+  "Department dashboard": STAFF,
   Syllabi: ALL,
   "Upload Syllabus": ALL,
   Curriculum: ALL,

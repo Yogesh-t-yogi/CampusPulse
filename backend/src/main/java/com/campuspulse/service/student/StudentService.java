@@ -227,6 +227,19 @@ public class StudentService {
         return view;
     }
 
+    /** Compact readiness for staff dashboards: best and average over the student's target roles. */
+    public Map<String, Object> readinessSummary(AppUser student) {
+        List<RoleView> roles = roles(student, resolveCourse(student));
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("targetRoles", roles.stream().map(RoleView::title).toList());
+        view.put("best", roles.stream().mapToDouble(RoleView::readiness).max().orElse(-1));
+        view.put("average", roles.isEmpty() ? -1
+                : Math.round(roles.stream().mapToDouble(RoleView::readiness).average().orElse(0) * 10) / 10.0);
+        view.put("learningDone", jdbc.queryForObject(
+                "SELECT count(*) FROM student_learning WHERE user_id = ? AND status = 'DONE'", Integer.class, student.getId()));
+        return view;
+    }
+
     // ================================================================ learning plan
 
     public Map<String, Object> learningPlan(AppUser user) {
