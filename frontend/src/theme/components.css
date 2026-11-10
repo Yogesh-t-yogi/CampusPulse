@@ -174,3 +174,21 @@
     display: none;
   }
 }
+
+/* Register: Faculty / Student choice */
+.ca-role-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cp-text);
+}
+
+.ca-role-switch {
+  width: 100%;
+}
+
+.ca-role-switch button {
+  flex: 1;
+  justify-content: center;
+}

@@ -15,6 +15,7 @@ import "./App.css";
 import "./FeatureAdditions.css";
 import "./theme/components.css";
 import ThemeControls from "./components/ThemeControls";
+import { setMode } from "./theme/theme";
 
 // Each page has its own URL, so refresh and the back button work.
 const PAGE_PATHS = {
@@ -290,7 +291,13 @@ function App() {
     let cancelled = false;
     api
       .get("/api/auth/me")
-      .then(({ data }) => !cancelled && setCurrentUser(data))
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCurrentUser(data);
+        // Students and faculty always see their own mode; admins can switch.
+        if (data.role === "STUDENT") setMode("student");
+        if (data.role === "FACULTY") setMode("faculty");
+      })
       .catch(() => !cancelled && setCurrentUser(null));
     return () => {
       cancelled = true;
@@ -579,7 +586,7 @@ function App() {
             )}
           </div>
 
-          <ThemeControls />
+          <ThemeControls allowModeSwitch={isAdmin} key={currentUser?.role || "none"} />
 
           <button
             type="button"

@@ -26,10 +26,22 @@ public class AuthService {
         this.adminBootstrap = adminBootstrap;
     }
 
+    /** Roles a person can pick when signing up. ADMIN only via ADMIN_EMAILS. */
+    public static final java.util.Set<String> SELF_SERVICE_ROLES =
+            java.util.Set.of("FACULTY", "STUDENT");
+
     public AppUser register(
             String name,
             String email,
-            String password) {
+            String password,
+            String requestedRole) {
+
+        String role = requestedRole == null
+                ? "FACULTY"
+                : requestedRole.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!SELF_SERVICE_ROLES.contains(role)) {
+            throw new IllegalArgumentException("Choose Faculty or Student.");
+        }
 
         if (appUserRepository.existsByEmail(email)) {
             throw new RuntimeException(
@@ -44,7 +56,7 @@ public class AuthService {
         user.setPassword(
                 passwordEncoder.encode(password)
         );
-        user.setRole(adminBootstrap.isAdminEmail(email) ? "ADMIN" : "USER");
+        user.setRole(adminBootstrap.isAdminEmail(email) ? "ADMIN" : role);
 
         return appUserRepository.save(user);
     }

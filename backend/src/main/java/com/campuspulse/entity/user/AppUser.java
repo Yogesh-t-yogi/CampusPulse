@@ -24,7 +24,7 @@ public class AppUser {
     private String password;
 
     @Column(nullable = false)
-    private String role = "USER";
+    private String role = "FACULTY";
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -56,7 +56,8 @@ public class AuthController {
             AppUser user = authService.register(
                     name.trim(),
                     email.trim(),
-                    password
+                    password,
+                    request.get("role")
             );
 
             return ResponseEntity.ok(

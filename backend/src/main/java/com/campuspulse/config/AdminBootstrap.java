@@ -42,6 +42,14 @@ public class AdminBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // Accounts created before roles existed ("USER") become FACULTY.
+        appUserRepository.findAll().stream()
+                .filter(user -> "USER".equals(user.getRole()))
+                .forEach(user -> {
+                    user.setRole("FACULTY");
+                    appUserRepository.save(user);
+                });
+
         appUserRepository.findAll().stream()
                 .filter(user -> isAdminEmail(user.getEmail()))
                 .filter(user -> !"ADMIN".equals(user.getRole()))

@@ -3,7 +3,7 @@ import { Moon, Sun, GraduationCap, Presentation } from "lucide-react";
 import { getMode, getTheme, setMode, setTheme } from "../theme/theme";
 
 // Faculty / Student mode switch and light / dark toggle.
-function ThemeControls({ onModeChange }) {
+function ThemeControls({ onModeChange, allowModeSwitch = true }) {
   const [mode, setModeState] = useState(getMode);
   const [theme, setThemeState] = useState(getTheme);
 
@@ -21,6 +21,7 @@ function ThemeControls({ onModeChange }) {
 
   return (
     <div className="cp-theme-controls">
+      {allowModeSwitch && (
       <div className="cp-mode-switch" role="group" aria-label="View mode">
         <button
           type="button"
@@ -41,6 +42,7 @@ function ThemeControls({ onModeChange }) {
           Student
         </button>
       </div>
+      )}
       <button
         type="button"
         className="cp-icon-button"

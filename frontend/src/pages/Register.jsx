@@ -8,6 +8,7 @@ function Register({ onRegistered, onShowLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("FACULTY");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -33,6 +34,7 @@ function Register({ onRegistered, onShowLogin }) {
           name: name.trim(),
           email: email.trim(),
           password,
+          role,
         }),
       });
 
@@ -130,6 +132,31 @@ function Register({ onRegistered, onShowLogin }) {
             </p>
 
             <form className="ca-form" onSubmit={handleSubmit}>
+              <div className="ca-field">
+                <span className="ca-role-label" id="register-role-label">I am</span>
+                <div
+                  className="cp-mode-switch ca-role-switch"
+                  role="radiogroup"
+                  aria-labelledby="register-role-label"
+                >
+                  {[
+                    ["FACULTY", "Faculty"],
+                    ["STUDENT", "Student"],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={role === value}
+                      className={role === value ? "active" : ""}
+                      onClick={() => setRole(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="ca-field">
                 <label htmlFor="register-name">Full name</label>
                 <div className="ca-input-wrap">
