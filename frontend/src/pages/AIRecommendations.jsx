@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import api, { errorMessage } from "../apiClient";
+import { can } from "../permissions";
 
 const OFFICIAL_SKILL_DOCS = {
   java: "https://dev.java/learn/",
@@ -30,7 +31,10 @@ function getLearningResources(skill) {
   ];
 }
 
-function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
+function AIRecommendations({ syllabusId, jobId, token, embedded = false, role }) {
+  // Faculty see curriculum changes; students see their own action plan and roadmap.
+  const showCurriculum = can(role, "curriculumRecommendations");
+  const showRoadmap = can(role, "learningRoadmap");
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -292,6 +296,7 @@ function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
                       </p>
                     </section>
 
+                    {showCurriculum && (
                     <section className="cr-detail-block">
                       <div className="cr-detail-title">
                         <span className="cr-detail-icon cr-detail-blue">▤</span>
@@ -302,6 +307,9 @@ function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
                           "No curriculum recommendation is available."}
                       </p>
                     </section>
+                    )}
+
+                    {showRoadmap && (
 
                     <section className="cr-detail-block">
                       <div className="cr-detail-title">
@@ -313,8 +321,9 @@ function AIRecommendations({ syllabusId, jobId, token, embedded = false }) {
                           "No student recommendation is available."}
                       </p>
                     </section>
+                    )}
                   </div>
-                  {status !== "MATCHED" && (
+                  {showRoadmap && status !== "MATCHED" && (
                     <section className="cr-roadmap">
                       <div className="cr-roadmap-heading">
                         <div>

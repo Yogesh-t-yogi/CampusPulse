@@ -7,6 +7,8 @@ import Sidebar from "./components/Sidebar";
 import Curriculum from "./pages/Curriculum";
 import JobMarket from "./pages/JobMarket";
 import Report from "./pages/Report";
+import Users from "./pages/Users";
+import { canSeePage, roleLabel } from "./permissions";
 import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -24,7 +26,9 @@ const PAGE_PATHS = {
   "Job Market": "/jobs",
   Report: "/report",
   "Market insights": "/insights",
+  "Resume match": "/resume",
   "Job catalog": "/catalog",
+  Users: "/users",
 };
 
 // Old page URLs now open the matching Report tab.
@@ -78,7 +82,8 @@ function App() {
   );
   const [sessionNotice, setSessionNotice] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
-  const isAdmin = currentUser?.role === "ADMIN";
+  const role = currentUser?.role;
+  const isAdmin = role === "ADMIN";
 
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
@@ -295,8 +300,8 @@ function App() {
         if (cancelled) return;
         setCurrentUser(data);
         // Students and faculty always see their own mode; admins can switch.
-        if (data.role === "STUDENT") setMode("student");
-        if (data.role === "FACULTY") setMode("faculty");
+        // Colours follow the role: teal for students, indigo for faculty/admin.
+        setMode(data.role === "STUDENT" ? "student" : "faculty");
       })
       .catch(() => !cancelled && setCurrentUser(null));
     return () => {
@@ -391,6 +396,20 @@ function App() {
   )?.title;
 
   const renderPage = () => {
+    // Role check (the backend enforces the same rules).
+    if (currentUser && !canSeePage(role, activePage)) {
+      return (
+        <main className="page-content">
+          <div className="cp-report-header">
+            <div>
+              <h1>Not available for your role</h1>
+              <p>This page is for other roles. Use the menu on the left.</p>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
     switch (activePage) {
       case "Upload Syllabus":
         return (
@@ -434,6 +453,21 @@ function App() {
           />
         );
 
+      case "Resume match":
+        return (
+          <JobMarket
+            key="resume"
+            section="resume"
+            isAdmin={isAdmin}
+            selectedJobId={selectedJobId}
+            hasSyllabus={Boolean(selectedSyllabusId)}
+            onJobSelected={handleJobSelected}
+          />
+        );
+
+      case "Users":
+        return <Users currentUserId={currentUser?.id} />;
+
       case "Job catalog":
         return (
           <JobMarket
@@ -457,6 +491,7 @@ function App() {
             token={token}
             syllabusName={selectedSyllabusName}
             jobTitle={selectedJobTitle}
+            role={role}
           />
         );
     }
@@ -480,7 +515,7 @@ function App() {
         setActivePage={setActivePage}
         hasSyllabus={Boolean(selectedSyllabusId)}
         hasJob={Boolean(selectedJobId)}
-        isAdmin={isAdmin}
+        role={role}
       />
 
       <main className="main-content">
@@ -586,7 +621,13 @@ function App() {
             )}
           </div>
 
-          <ThemeControls allowModeSwitch={isAdmin} key={currentUser?.role || "none"} />
+          {currentUser && (
+            <span className="cp-role-badge" title={currentUser.email}>
+              {currentUser.name} · {roleLabel(role)}
+            </span>
+          )}
+
+          <ThemeControls allowModeSwitch={false} />
 
           <button
             type="button"

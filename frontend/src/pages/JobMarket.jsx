@@ -24,7 +24,12 @@ const SECTION_COPY = {
   insights: {
     eyebrow: "MARKET INSIGHTS",
     title: "Market insights",
-    text: "See which skills employers ask for most, and match a resume against the job catalog.",
+    text: "See which skills employers ask for most across the job catalog.",
+  },
+  resume: {
+    eyebrow: "STUDENT · RESUME MATCH",
+    title: "Resume match",
+    text: "Upload your resume to see which catalog jobs fit your skills and what you still need to learn.",
   },
   catalog: {
     eyebrow: "ADMIN · JOB CATALOG",
@@ -624,7 +629,7 @@ function JobMarket({
       </section>
       )}
 
-      {section === "insights" && (
+      {section === "resume" && (
       <section className="jm-resume-section">
         <div className="jm-resume-copy">
           <span className="jm-eyebrow">STUDENT RESUME MATCHING</span>
@@ -733,7 +738,7 @@ function JobMarket({
         </div>
       )}
 
-      {section !== "insights" && (
+      {section !== "insights" && section !== "resume" && (
       <section className="jm-stats">
         <article className="jm-stat-card">
           <span className="jm-stat-icon jm-icon-purple">▤</span>
@@ -788,7 +793,7 @@ function JobMarket({
       </section>
       )}
 
-      {section !== "insights" && (
+      {section !== "insights" && section !== "resume" && (
       <section className="jm-listing-section">
         <div className="jm-section-header">
           <div>

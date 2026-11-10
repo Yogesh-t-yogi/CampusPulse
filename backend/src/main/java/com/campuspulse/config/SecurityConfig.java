@@ -57,6 +57,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/job-catalog/import")
                     .hasRole("ADMIN")
 
+                // Role-based access (see _claude/plans/07-rbac.md)
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/resume/**").hasAnyRole("STUDENT", "ADMIN")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

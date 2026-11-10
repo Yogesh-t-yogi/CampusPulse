@@ -14,7 +14,7 @@ const TABS = [
 
 // One report for the selected syllabus + job. Results are saved on the server;
 // "Re-run analysis" recomputes them.
-function Report({ syllabusId, jobId, token, syllabusName, jobTitle }) {
+function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get("tab");
   const tab = TABS.some((item) => item.id === requested) ? requested : "overview";
@@ -100,7 +100,7 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle }) {
         {tab === "overview" && <Dashboard key={`o-${version}`} {...pageProps} />}
         {tab === "skills" && <GapAnalysis key={`s-${version}`} {...pageProps} />}
         {tab === "recommendations" && (
-          <AIRecommendations key={`r-${version}`} {...pageProps} />
+          <AIRecommendations key={`r-${version}`} {...pageProps} role={role} />
         )}
       </div>
     </div>

@@ -7,7 +7,10 @@ import {
   FileUp,
   TrendingUp,
   Database,
+  FileUser,
+  Users as UsersIcon,
 } from "lucide-react";
+import { canSeePage } from "../permissions";
 import api from "../apiClient";
 import { isPageAvailable, WORKFLOW_STEPS } from "../workflow";
 
@@ -18,10 +21,18 @@ const ICONS = {
   Report: ChartNoAxesCombined,
   "Market insights": TrendingUp,
   "Job catalog": Database,
+  "Resume match": FileUser,
+  Users: UsersIcon,
 };
 
-const EXTRA_PAGES = [{ page: "Market insights", label: "Market insights" }];
-const ADMIN_PAGES = [{ page: "Job catalog", label: "Job catalog" }];
+const TOOL_PAGES = [
+  { page: "Market insights", label: "Market insights" },
+  { page: "Resume match", label: "Resume match" },
+];
+const ADMIN_PAGES = [
+  { page: "Job catalog", label: "Job catalog" },
+  { page: "Users", label: "Users" },
+];
 
 const STATUS_CHECK_MS = 60000;
 
@@ -58,7 +69,32 @@ function useServiceStatus() {
   return status;
 }
 
-function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob, isAdmin }) {
+function NavGroup({ title, items, activePage, setActivePage }) {
+  if (items.length === 0) return null;
+  return (
+    <>
+      <p className="nav-title">{title}</p>
+      {items.map((item) => {
+        const Icon = ICONS[item.page];
+        return (
+          <button
+            key={item.page}
+            type="button"
+            onClick={() => setActivePage(item.page)}
+            aria-current={activePage === item.page ? "page" : undefined}
+            className={activePage === item.page ? "nav-item active" : "nav-item"}
+          >
+            <Icon size={19} />
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob, role }) {
+  const allowed = (items) => items.filter((item) => canSeePage(role, item.page));
   const status = useServiceStatus();
 
   return (
@@ -97,22 +133,18 @@ function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob, isAdmin }) {
           );
         })}
 
-        <p className="nav-title">TOOLS</p>
-        {EXTRA_PAGES.concat(isAdmin ? ADMIN_PAGES : []).map((item) => {
-          const Icon = ICONS[item.page];
-          return (
-            <button
-              key={item.page}
-              type="button"
-              onClick={() => setActivePage(item.page)}
-              aria-current={activePage === item.page ? "page" : undefined}
-              className={activePage === item.page ? "nav-item active" : "nav-item"}
-            >
-              <Icon size={19} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        <NavGroup
+          title="TOOLS"
+          items={allowed(TOOL_PAGES)}
+          activePage={activePage}
+          setActivePage={setActivePage}
+        />
+        <NavGroup
+          title="ADMIN"
+          items={allowed(ADMIN_PAGES)}
+          activePage={activePage}
+          setActivePage={setActivePage}
+        />
       </nav>
 
       <div className="sidebar-footer">
