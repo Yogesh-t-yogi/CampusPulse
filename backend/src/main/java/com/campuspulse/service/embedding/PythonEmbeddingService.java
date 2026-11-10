@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 import java.util.List;
 
@@ -34,6 +37,9 @@ public class PythonEmbeddingService implements EmbeddingService {
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(EmbeddingResponse.class)
+                .timeout(Duration.ofSeconds(30), Mono.error(
+                        new IllegalStateException(
+                                "The AI embedding service did not respond within 30 seconds.")))
                 .block();
 
         if (response == null) {

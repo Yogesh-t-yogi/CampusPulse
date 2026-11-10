@@ -22,6 +22,9 @@ import java.nio.file.Path;
 @Service
 public class PdfTextExtractionService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(PdfTextExtractionService.class);
+
     public String extractText(MultipartFile file) throws IOException {
 
         if (file == null || file.isEmpty()) {
@@ -57,7 +60,7 @@ public class PdfTextExtractionService {
             if (extractedText != null &&
                     !extractedText.isBlank()) {
 
-                System.out.println(
+                log.info(
                         "PDF text extraction completed. Characters: "
                                 + extractedText.length()
                 );
@@ -156,7 +159,7 @@ public class PdfTextExtractionService {
 
                     result.append(output);
 
-                    System.out.println(
+                    log.info(
                             "OCR completed for page " + (page + 1)
                     );
 
@@ -174,7 +177,7 @@ public class PdfTextExtractionService {
                 );
             }
 
-            System.out.println(
+            log.info(
                     "OCR completed. Extracted characters: "
                             + ocrText.length()
             );

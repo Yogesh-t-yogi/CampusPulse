@@ -16,6 +16,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.List;
@@ -49,7 +50,10 @@ public class SyllabusPersistenceService {
                     "AI response contains no subjects.");
         }
 
-        // Remove the previous generated structure.
+        // Remove the previous generated structure (vectors first, then topics).
+        if (syllabus.getId() != null) {
+            topicEmbeddingRepository.deleteBySyllabusId(syllabus.getId());
+        }
         syllabus.getSubjects().clear();
 
         for (AiSubject aiSubject : aiResponse.getSubjects()) {
@@ -92,8 +96,9 @@ public class SyllabusPersistenceService {
                 .toList();
 
         int generated = 0;
-        for (int index = 0; index < topics.size(); index++) {
-            Topic topic = topics.get(index);
+        int failed = 0;
+        String firstError = "";
+        for (Topic topic : topics) {
             try {
                 String text = topic.getName();
 
@@ -122,38 +127,46 @@ public class SyllabusPersistenceService {
             } catch (WebClientException
                      | DataAccessException
                      | IllegalStateException exception) {
-                String detail = getEmbeddingFailureDetail(exception);
-                if (detail == null || detail.isBlank()) {
-                    detail = exception.getClass().getSimpleName();
+                failed++;
+                if (firstError.isEmpty()) {
+                    String detail = getEmbeddingFailureDetail(exception);
+                    if (detail == null || detail.isBlank()) {
+                        detail = exception.getClass().getSimpleName();
+                    }
+                    if (detail.length() > 500) {
+                        detail = detail.substring(0, 500);
+                    }
+                    firstError = detail;
                 }
-                if (detail.length() > 500) {
-                    detail = detail.substring(0, 500);
+                // Stop early if the service is clearly down (first 3 all failed).
+                if (generated == 0 && failed >= 3) {
+                    failed = topics.size();
+                    break;
                 }
-
-                int failed = topics.size() - index;
-                return new EmbeddingGenerationResult(
-                        generated,
-                        failed,
-                        "Embedding generation stopped at topic "
-                                + topic.getId() + ": " + detail);
             }
         }
 
-        return new EmbeddingGenerationResult(generated, 0, "");
+        if (failed == 0) {
+            return new EmbeddingGenerationResult(generated, 0, "");
+        }
+        return new EmbeddingGenerationResult(
+                generated,
+                failed,
+                failed + " of " + topics.size()
+                        + " topics could not be indexed for matching: "
+                        + firstError
+                        + " Re-run processing from the Curriculum page once the"
+                        + " AI service is running.");
     }
 
     private String getEmbeddingFailureDetail(RuntimeException exception) {
         if (exception instanceof WebClientResponseException responseException) {
             int status = responseException.getStatusCode().value();
-            if (status == 503) {
-                return "The Python embedding service is missing configuration. "
-                        + "Set HF_TOKEN and restart that service.";
-            }
-            if (status == 502) {
-                return "The Hugging Face embedding request failed. Check "
-                        + "HF_TOKEN permissions and access to the configured model.";
-            }
-            return "The Python embedding service returned HTTP " + status + ".";
+            return "The AI embedding service returned HTTP " + status + ".";
+        }
+        if (exception instanceof WebClientRequestException) {
+            return "The AI embedding service is not reachable. "
+                    + "Start it on port 8000 (see README).";
         }
         return exception.getMessage();
     }

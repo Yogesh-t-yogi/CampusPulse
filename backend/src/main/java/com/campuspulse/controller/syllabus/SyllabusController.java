@@ -20,6 +20,9 @@ import java.util.Map;
 @RequestMapping("/api/syllabus")
 public class SyllabusController {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(SyllabusController.class);
+
     private final SyllabusService syllabusService;
     private final PdfTextExtractionService pdfTextExtractionService;
     private final CurrentUserService currentUserService;
@@ -80,27 +83,11 @@ public class SyllabusController {
             @RequestParam("file") MultipartFile file) {
 
         try {
-            System.out.println("========== PDF UPLOAD STARTED ==========");
-            System.out.println("Filename: " + file.getOriginalFilename());
-            System.out.println("Uploaded file size: " + file.getSize());
+            log.info("Syllabus upload started, size {} bytes", file.getSize());
 
             // Step 1: Extract PDF text
             String extractedText =
                     pdfTextExtractionService.extractText(file);
-
-            System.out.println(
-                    "Extracted text length: " +
-                    (extractedText == null ? "NULL" : extractedText.length())
-            );
-
-            System.out.println(
-                    "Extracted text preview: " +
-                    (extractedText == null
-                            ? "NULL"
-                            : extractedText.substring(
-                                    0, Math.min(300, extractedText.length()))
-                    )
-            );
 
             if (extractedText == null || extractedText.isBlank()) {
                 return ResponseEntity.badRequest().body(
@@ -126,14 +113,9 @@ public class SyllabusController {
             Syllabus savedSyllabus =
                     syllabusService.createSyllabus(syllabus);
 
-            System.out.println("Saved syllabus ID: " + savedSyllabus.getId());
-            System.out.println(
-                    "Saved text length: " +
-                    (savedSyllabus.getExtractedText() == null
-                            ? "NULL"
-                            : savedSyllabus.getExtractedText().length())
-            );
-            System.out.println("========== PDF UPLOAD FINISHED ==========");
+            log.info("Syllabus {} saved, {} characters extracted",
+                    savedSyllabus.getId(),
+                    savedSyllabus.getExtractedText().length());
 
             return ResponseEntity.ok(
                     Map.of(
@@ -148,7 +130,7 @@ public class SyllabusController {
             );
 
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            log.warn("Syllabus upload rejected: {}", e.getMessage());
 
             return ResponseEntity.badRequest().body(
                     Map.of("error", e.getMessage() == null
@@ -157,7 +139,7 @@ public class SyllabusController {
             );
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Syllabus upload failed to read PDF", e);
 
             return ResponseEntity.internalServerError().body(
                     Map.of("error", "Unable to read PDF file")

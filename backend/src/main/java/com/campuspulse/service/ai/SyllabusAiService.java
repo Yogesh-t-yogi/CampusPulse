@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class SyllabusAiService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(SyllabusAiService.class);
+
     private final LlmService llmService;
     private final ObjectMapper objectMapper;
 
@@ -167,7 +170,7 @@ public class SyllabusAiService {
 
         } catch (Exception firstError) {
 
-            System.out.println(
+            log.warn(
                     "AI returned invalid JSON. Attempting repair..."
             );
 
