@@ -13,6 +13,7 @@ import com.campuspulse.repository.syllabus.SyllabusRepository;
 import com.campuspulse.repository.user.AppUserRepository;
 import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.auth.TempPasswords;
+import com.campuspulse.service.org.StudentImportService;
 import com.campuspulse.service.org.TenantService;
 import com.campuspulse.service.syllabus.SyllabusService;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,7 @@ public class AdminUserController {
     private final TenantService tenantService;
     private final DepartmentRepository departmentRepository;
     private final ProgramRepository programRepository;
+    private final StudentImportService studentImportService;
 
     public AdminUserController(
             AppUserRepository appUserRepository,
@@ -58,7 +60,8 @@ public class AdminUserController {
             JobRequiredSkillRepository jobRequiredSkillRepository,
             TenantService tenantService,
             DepartmentRepository departmentRepository,
-            ProgramRepository programRepository) {
+            ProgramRepository programRepository,
+            StudentImportService studentImportService) {
         this.appUserRepository = appUserRepository;
         this.currentUserService = currentUserService;
         this.passwordEncoder = passwordEncoder;
@@ -69,6 +72,7 @@ public class AdminUserController {
         this.tenantService = tenantService;
         this.departmentRepository = departmentRepository;
         this.programRepository = programRepository;
+        this.studentImportService = studentImportService;
     }
 
     @GetMapping
@@ -107,9 +111,43 @@ public class AdminUserController {
 
         String password = TempPasswords.generate();
         user.setPassword(passwordEncoder.encode(password));
+        user.setMustChangePassword(true);
         Map<String, Object> view = view(appUserRepository.save(user));
         view.put("temporaryPassword", password);
         return view;
+    }
+
+    // ---------- bulk onboarding (Excel / CSV) ----------
+
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> importTemplate() throws java.io.IOException {
+        byte[] file = studentImportService.template(tenantService.actingInstitutionId(me()));
+        return xlsx(file, "campuspulse-students-template.xlsx");
+    }
+
+    /** apply=false (default): preview only. apply=true: create/update the valid rows. */
+    @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public StudentImportService.ImportResult importUsers(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "apply", defaultValue = "false") boolean apply) throws java.io.IOException {
+        return studentImportService.importFile(file, me(), apply);
+    }
+
+    /** Builds an .xlsx from the one-time passwords the import just returned (nothing is stored). */
+    @PostMapping("/credentials-sheet")
+    public ResponseEntity<byte[]> credentialsSheet(@RequestBody List<Map<String, String>> people) throws java.io.IOException {
+        if (people.size() > StudentImportService.MAX_ROWS) {
+            throw bad("Too many rows.");
+        }
+        return xlsx(studentImportService.credentialsSheet(people), "campuspulse-credentials.xlsx");
+    }
+
+    private static ResponseEntity<byte[]> xlsx(byte[] file, String name) {
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 
     /** Change role, department and/or program. */
@@ -130,6 +168,7 @@ public class AdminUserController {
         AppUser user = requireManageable(id);
         String password = TempPasswords.generate();
         user.setPassword(passwordEncoder.encode(password));
+        user.setMustChangePassword(true);
         Map<String, Object> view = view(appUserRepository.save(user));
         view.put("temporaryPassword", password);
         return view;
@@ -173,6 +212,15 @@ public class AdminUserController {
             user.setDepartmentId(departmentId);
         } else if ("HOD".equals(actor.getRole()) && user.getDepartmentId() == null) {
             user.setDepartmentId(actor.getDepartmentId());
+        }
+
+        if (body.containsKey("rollNumber")) {
+            String roll = body.get("rollNumber");
+            user.setRollNumber(roll == null || roll.isBlank() ? null : roll.trim());
+        }
+        if (body.containsKey("batchYear")) {
+            Long year = optionalLong(body.get("batchYear"));
+            user.setBatchYear(year == null ? null : year.intValue());
         }
 
         if (body.containsKey("programId")) {
@@ -247,6 +295,9 @@ public class AdminUserController {
         view.put("departmentName", user.getDepartmentId() == null || !departments.containsKey(user.getDepartmentId())
                 ? null : departments.get(user.getDepartmentId()).getName());
         view.put("programId", user.getProgramId());
+        view.put("rollNumber", user.getRollNumber());
+        view.put("batchYear", user.getBatchYear());
+        view.put("mustChangePassword", user.isMustChangePassword());
         view.put("programName", user.getProgramId() == null || !programs.containsKey(user.getProgramId())
                 ? null : programs.get(user.getProgramId()).getName());
         return view;

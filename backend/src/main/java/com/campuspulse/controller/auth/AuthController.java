@@ -35,6 +35,16 @@ public class AuthController {
     }
 
     // Who is logged in (used by the frontend to show admin-only tools).
+    // Set a new password (required after a one-time password). Clears mustChangePassword.
+    @PostMapping("/change-password")
+    public Map<String, Object> changePassword(@RequestBody Map<String, String> request) {
+        authService.changePassword(
+                currentUserService.getCurrentUser(),
+                request.get("currentPassword"),
+                request.get("newPassword"));
+        return Map.of("message", "Password changed");
+    }
+
     @GetMapping("/me")
     public Map<String, Object> me() {
         AppUser user = currentUserService.getCurrentUser();
@@ -43,6 +53,8 @@ public class AuthController {
         view.put("name", user.getName());
         view.put("email", user.getEmail());
         view.put("role", user.getRole());
+        view.put("mustChangePassword", user.isMustChangePassword());
+        view.put("rollNumber", user.getRollNumber());
         view.put("institution", user.getInstitutionId() == null ? null
                 : institutionRepository.findById(user.getInstitutionId())
                     .map(i -> Map.of("id", i.getId(), "name", i.getName(), "code", i.getCode()))
@@ -128,11 +140,13 @@ public class AuthController {
                     password
             );
 
+            boolean mustChange = authService.mustChangePassword(email.trim());
             return ResponseEntity.ok(
                     Map.of(
                             "message", "Login successful",
                             "token", token,
-                            "tokenType", "Bearer"
+                            "tokenType", "Bearer",
+                            "mustChangePassword", mustChange
                     )
             );
 

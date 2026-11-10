@@ -58,6 +58,12 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Excel (.xlsx) for bulk student import and credential sheets -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.4.1</version>
+		</dependency>
 		<!-- Versioned database migrations (src/main/resources/db/migration) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

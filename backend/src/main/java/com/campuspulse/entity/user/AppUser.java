@@ -38,6 +38,16 @@ public class AppUser {
     @Column(name = "program_id")
     private Long programId;
 
+    @Column(name = "roll_number", length = 50)
+    private String rollNumber;
+
+    @Column(name = "batch_year")
+    private Integer batchYear;
+
+    // Set for admin-created / imported / reset accounts; cleared when the user sets a password.
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
 
     public Long getInstitutionId() { return institutionId; }
     public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
@@ -45,6 +55,13 @@ public class AppUser {
     public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     public Long getProgramId() { return programId; }
     public void setProgramId(Long programId) { this.programId = programId; }
+
+    public String getRollNumber() { return rollNumber; }
+    public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }
+    public Integer getBatchYear() { return batchYear; }
+    public void setBatchYear(Integer batchYear) { this.batchYear = batchYear; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
 
     public AppUser() {
     }

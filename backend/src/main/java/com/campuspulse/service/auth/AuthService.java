@@ -72,6 +72,26 @@ public class AuthService {
         return appUserRepository.save(user);
     }
 
+    public boolean mustChangePassword(String email) {
+        return appUserRepository.findByEmail(email).map(AppUser::isMustChangePassword).orElse(false);
+    }
+
+    public void changePassword(AppUser user, String currentPassword, String newPassword) {
+        AppUser fresh = appUserRepository.findById(user.getId()).orElseThrow();
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, fresh.getPassword())) {
+            throw new IllegalArgumentException("Your current password is wrong.");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("The new password needs at least 8 characters.");
+        }
+        if (newPassword.equals(currentPassword)) {
+            throw new IllegalArgumentException("Choose a password different from the one-time password.");
+        }
+        fresh.setPassword(passwordEncoder.encode(newPassword));
+        fresh.setMustChangePassword(false);
+        appUserRepository.save(fresh);
+    }
+
     public String login(
             String email,
             String password) {
