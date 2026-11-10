@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
-public class JobCatalogProvider implements JobSearchProvider {
+public class JobCatalogProvider {
 
     private static final long MAX_CSV_BYTES = 10 * 1024 * 1024;
     private static final int MAX_IMPORT_ROWS = 10_000;
@@ -57,7 +57,6 @@ public class JobCatalogProvider implements JobSearchProvider {
         }
     }
 
-    @Override
     public List<JobPosting> searchJobs(
             String keyword,
             String location,
@@ -96,13 +95,23 @@ public class JobCatalogProvider implements JobSearchProvider {
                 .toList();
     }
 
+    /** Rows added, and rows skipped because the same title + company is already in that catalog. */
+    public record ImportResult(int imported, int skipped) {
+    }
+
+    private boolean catalogHasJob(String title, String company, Long institutionId) {
+        return institutionId == null
+                ? jobPostingRepository.existsByOwnerIsNullAndInstitutionIdIsNullAndTitleIgnoreCaseAndCompanyIgnoreCase(title.trim(), company)
+                : jobPostingRepository.existsByOwnerIsNullAndInstitutionIdAndTitleIgnoreCaseAndCompanyIgnoreCase(institutionId, title.trim(), company);
+    }
+
     @Transactional
-    public int importCsv(MultipartFile file) throws IOException {
+    public ImportResult importCsv(MultipartFile file) throws IOException {
         return importCsv(file, null);
     }
 
     @Transactional
-    public int importCsv(MultipartFile file, Long institutionId) throws IOException {
+    public ImportResult importCsv(MultipartFile file, Long institutionId) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException(
                     "CSV file is required for import."
@@ -120,6 +129,8 @@ public class JobCatalogProvider implements JobSearchProvider {
         }
 
         int imported = 0;
+        int skipped = 0;
+        java.util.Set<String> seenInFile = new java.util.HashSet<>();
         try (PushbackReader reader = new PushbackReader(
                 new BufferedReader(new InputStreamReader(
                         file.getInputStream(), StandardCharsets.UTF_8)), 1)) {
@@ -171,6 +182,12 @@ public class JobCatalogProvider implements JobSearchProvider {
                         row.get("skills"), row.get("required_skills"),
                         row.get("skill_set"), "");
 
+                // Re-importing the same file must not duplicate jobs.
+                String key = (title + "|" + company).toLowerCase(Locale.ROOT).trim();
+                if (!seenInFile.add(key) || catalogHasJob(title, company, institutionId)) {
+                    skipped++;
+                    continue;
+                }
                 createCatalogJob(
                         title, company, location, description,
                         parseSkills(rawSkills),
@@ -180,7 +197,7 @@ public class JobCatalogProvider implements JobSearchProvider {
             }
         }
 
-        return imported;
+        return new ImportResult(imported, skipped);
     }
 
     @Transactional

@@ -36,5 +36,9 @@ public interface JobPostingRepository
 
     boolean existsBySourceAndTitle(String source, String title);
 
+    boolean existsByOwnerIsNullAndInstitutionIdIsNullAndTitleIgnoreCaseAndCompanyIgnoreCase(String title, String company);
+
+    boolean existsByOwnerIsNullAndInstitutionIdAndTitleIgnoreCaseAndCompanyIgnoreCase(Long institutionId, String title, String company);
+
     List<JobPosting> findAllByOwner_Id(Long ownerId);
 }

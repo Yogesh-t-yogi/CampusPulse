@@ -127,7 +127,7 @@ function JobCatalog({ onChanged }) {
       const response = await api.post("/api/job-catalog/import", data);
       setImportOpen(false);
       setCsvFile(null);
-      await afterChange(`${response.data.imported} jobs imported`);
+      await afterChange(response.data.message || `${response.data.imported} jobs imported`);
     } catch (err) {
       toast(errorMessage(err, "Couldn't import this CSV."), "danger");
     } finally {

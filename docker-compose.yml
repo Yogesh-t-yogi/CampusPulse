@@ -38,6 +38,7 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       DEMO_USERS_PASSWORD: ${DEMO_USERS_PASSWORD:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
     ports:
       - "8081:8081"
 

@@ -12,15 +12,17 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
+    /** From CORS_ALLOWED_ORIGINS (comma-separated); defaults to the local Vite dev server. */
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173}")
+    private List<String> allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "https://campuspulse-frontend-tqsl.onrender.com"
-        ));
+        configuration.setAllowedOrigins(allowedOrigins.stream()
+                .map(String::trim).filter(origin -> !origin.isEmpty()).toList());
 
         configuration.setAllowedMethods(List.of(
                 "GET",

@@ -59,10 +59,14 @@ public class JobCatalogController {
     public ResponseEntity<Map<String, Object>> importCsv(
             @RequestParam("file") MultipartFile file) throws IOException {
         try {
-            int imported = jobCatalogProvider.importCsv(file, targetCatalog());
+            var result = jobCatalogProvider.importCsv(file, targetCatalog());
             Map<String, Object> payload = new HashMap<>();
-            payload.put("imported", imported);
-            payload.put("message", "Dataset jobs imported successfully.");
+            payload.put("imported", result.imported());
+            payload.put("skipped", result.skipped());
+            payload.put("message", result.skipped() == 0
+                    ? "Imported " + result.imported() + " jobs."
+                    : "Imported " + result.imported() + " jobs; skipped " + result.skipped()
+                        + " already in the catalog.");
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             Map<String, Object> error = new HashMap<>();
