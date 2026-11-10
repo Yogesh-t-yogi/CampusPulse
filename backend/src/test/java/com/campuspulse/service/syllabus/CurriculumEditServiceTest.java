@@ -41,9 +41,10 @@ class CurriculumEditServiceTest {
     private final TopicEmbeddingJdbcRepository vectors = mock(TopicEmbeddingJdbcRepository.class);
     private final EmbeddingService embeddings = mock(EmbeddingService.class);
     private final AnalysisResultService results = mock(AnalysisResultService.class);
+    private final SyllabusService syllabusService = mock(SyllabusService.class);
 
     private final CurriculumEditService service = new CurriculumEditService(
-            syllabi, subjects, units, topics, vectors, embeddings, results);
+            syllabi, subjects, units, topics, vectors, embeddings, results, syllabusService);
 
     private Unit unitA;
     private Unit unitB;
@@ -82,6 +83,9 @@ class CurriculumEditServiceTest {
 
     @Test
     void otherUsersCannotEdit() {
+        // Access rules live in SyllabusAccess (tested there); here: a refusal stops the edit.
+        when(syllabusService.requireManageable(1L))
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN));
         assertThrows(ResponseStatusException.class,
                 () -> service.deleteTopic(1L, 6L, 30L));
         verify(vectors, never()).deleteByTopicId(anyLong());

@@ -32,7 +32,7 @@ public class SyllabusAiController {
     // Returns 202 at once; poll GET /api/ai/syllabus/{id}/status.
     @PostMapping("/{id}/save")
     public ResponseEntity<Map<String, Object>> startProcessing(@PathVariable Long id) {
-        Syllabus syllabus = requireOwnSyllabus(id);
+        Syllabus syllabus = syllabusService.requireManageable(id);
 
         if (syllabus.getExtractedText() == null
                 || syllabus.getExtractedText().isBlank()) {

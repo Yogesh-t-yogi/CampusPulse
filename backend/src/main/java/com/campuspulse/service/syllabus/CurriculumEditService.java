@@ -34,6 +34,7 @@ public class CurriculumEditService {
     private final TopicEmbeddingJdbcRepository topicEmbeddingRepository;
     private final EmbeddingService embeddingService;
     private final AnalysisResultService analysisResultService;
+    private final SyllabusService syllabusService;
 
     public CurriculumEditService(
             SyllabusRepository syllabusRepository,
@@ -42,7 +43,8 @@ public class CurriculumEditService {
             TopicRepository topicRepository,
             TopicEmbeddingJdbcRepository topicEmbeddingRepository,
             EmbeddingService embeddingService,
-            AnalysisResultService analysisResultService) {
+            AnalysisResultService analysisResultService,
+            SyllabusService syllabusService) {
         this.syllabusRepository = syllabusRepository;
         this.subjectRepository = subjectRepository;
         this.unitRepository = unitRepository;
@@ -50,6 +52,7 @@ public class CurriculumEditService {
         this.topicEmbeddingRepository = topicEmbeddingRepository;
         this.embeddingService = embeddingService;
         this.analysisResultService = analysisResultService;
+        this.syllabusService = syllabusService;
     }
 
     // ---------- subjects ----------
@@ -159,9 +162,8 @@ public class CurriculumEditService {
     }
 
     private void requireOwnSyllabus(Long syllabusId, Long userId) {
-        if (syllabusRepository.findByIdAndOwner_Id(syllabusId, userId).isEmpty()) {
-            throw notFound("Syllabus");
-        }
+        // Owner, HOD of its department or college admin (SyllabusAccess.canManage).
+        syllabusService.requireManageable(syllabusId);
     }
 
     private Subject requireSubject(Long syllabusId, Long userId, Long subjectId) {

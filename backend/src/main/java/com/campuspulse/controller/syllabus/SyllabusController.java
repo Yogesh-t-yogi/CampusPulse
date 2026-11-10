@@ -5,6 +5,7 @@ import com.campuspulse.dto.syllabus.FullSyllabusResponse;
 import com.campuspulse.entity.syllabus.Syllabus;
 import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.syllabus.PdfTextExtractionService;
+import com.campuspulse.service.syllabus.SyllabusAccess;
 import com.campuspulse.service.syllabus.SyllabusService;
 
 import org.springframework.http.MediaType;
@@ -40,15 +41,20 @@ public class SyllabusController {
     // LIST THE CURRENT USER'S SYLLABI (summary: status, subject and topic counts)
     @GetMapping
     public List<Map<String, Object>> getAllSyllabi() {
-        return syllabusService.listSummaries(currentUserService.getCurrentUser().getId());
+        return syllabusService.listReadable(currentUserService.getCurrentUser());
     }
 
-    // RENAME
+    // EDIT DETAILS: name, programId, semester, visibility (PRIVATE / DEPARTMENT)
     @PutMapping("/{id}")
-    public Map<String, Object> rename(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        Syllabus syllabus = syllabusService.rename(
-                id, currentUserService.getCurrentUser().getId(), body.get("name"));
-        return Map.of("id", syllabus.getId(), "name", syllabus.getName());
+    public Map<String, Object> updateDetails(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Syllabus syllabus = syllabusService.updateDetails(id, body);
+        Map<String, Object> view = new java.util.HashMap<>();
+        view.put("id", syllabus.getId());
+        view.put("name", syllabus.getName());
+        view.put("programId", syllabus.getProgramId());
+        view.put("semester", syllabus.getSemester());
+        view.put("visibility", syllabus.getVisibility());
+        return view;
     }
 
     // DELETE (with its curriculum, vectors and saved reports)
@@ -90,7 +96,9 @@ public class SyllabusController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<Map<String, Object>> uploadPdf(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "programId", required = false) Long programId,
+            @RequestParam(value = "semester", required = false) Long semester) {
 
         try {
             log.info("Syllabus upload started, size {} bytes", file.getSize());
@@ -121,6 +129,12 @@ public class SyllabusController {
             syllabus.setOwner(owner);
             syllabus.setInstitutionId(owner.getInstitutionId());
             syllabus.setDepartmentId(owner.getDepartmentId());
+            syllabus.setVisibility(SyllabusAccess.defaultVisibility(owner));
+            // Students' syllabi belong to their own program; staff pick one.
+            Long chosenProgram = "STUDENT".equals(owner.getRole()) && owner.getProgramId() != null
+                    ? owner.getProgramId() : programId;
+            syllabusService.applyProgram(syllabus, chosenProgram);
+            syllabus.setSemester(syllabusService.validSemester(syllabus, semester));
 
             // Step 3: Save syllabus
             Syllabus savedSyllabus =

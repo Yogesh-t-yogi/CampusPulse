@@ -58,6 +58,10 @@ public class Syllabus {
     @Column(name = "semester")
     private Integer semester;
 
+    // PRIVATE or DEPARTMENT (see SyllabusAccess)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private String visibility = "PRIVATE";
+
 
     @OneToMany(
         mappedBy = "syllabus",
@@ -74,6 +78,9 @@ public class Syllabus {
     public void setProgramId(Long programId) { this.programId = programId; }
     public Integer getSemester() { return semester; }
     public void setSemester(Integer semester) { this.semester = semester; }
+
+    public String getVisibility() { return visibility; }
+    public void setVisibility(String visibility) { this.visibility = visibility; }
 
     public Syllabus() {
     }
