@@ -14,20 +14,23 @@ public interface JobPostingRepository
     @Query("""
             SELECT job
             FROM JobPosting job
-            WHERE job.owner IS NULL OR job.owner.id = :userId
+            WHERE ((job.owner IS NULL AND (job.institutionId IS NULL OR job.institutionId = :institutionId)) OR job.owner.id = :userId)
             ORDER BY job.createdAt DESC
             """)
-    List<JobPosting> findAccessibleJobs(@Param("userId") Long userId);
+    List<JobPosting> findAccessibleJobs(
+            @Param("userId") Long userId,
+            @Param("institutionId") Long institutionId);
 
     @Query("""
             SELECT job
             FROM JobPosting job
             WHERE job.id = :jobId
-                AND (job.owner IS NULL OR job.owner.id = :userId)
+                AND ((job.owner IS NULL AND (job.institutionId IS NULL OR job.institutionId = :institutionId)) OR job.owner.id = :userId)
             """)
     Optional<JobPosting> findAccessibleJob(
             @Param("jobId") Long jobId,
-            @Param("userId") Long userId);
+            @Param("userId") Long userId,
+            @Param("institutionId") Long institutionId);
 
     List<JobPosting> findBySourceOrderByCreatedAtDesc(String source);
 

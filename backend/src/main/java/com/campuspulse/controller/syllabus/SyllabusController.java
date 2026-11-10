@@ -117,7 +117,10 @@ public class SyllabusController {
                             : "Uploaded Syllabus"
             );
             syllabus.setExtractedText(extractedText);
-            syllabus.setOwner(currentUserService.getCurrentUser());
+            var owner = currentUserService.getCurrentUser();
+            syllabus.setOwner(owner);
+            syllabus.setInstitutionId(owner.getInstitutionId());
+            syllabus.setDepartmentId(owner.getDepartmentId());
 
             // Step 3: Save syllabus
             Syllabus savedSyllabus =

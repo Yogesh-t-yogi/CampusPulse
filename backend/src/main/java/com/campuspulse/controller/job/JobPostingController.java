@@ -45,8 +45,10 @@ public class JobPostingController {
     // ADMIN: add a shared catalog job by hand (SecurityConfig: POST /api/jobs is ADMIN only)
     @PostMapping
     public JobPosting createJob(@RequestBody JobForm form) {
+        var user = currentUserService.getCurrentUser();
+        Long catalog = "SUPER_ADMIN".equals(user.getRole()) ? null : user.getInstitutionId();
         return jobCatalogProvider.createCatalogJob(
-                form.title(), form.company(), form.location(), form.description(), form.skills());
+                form.title(), form.company(), form.location(), form.description(), form.skills(), catalog);
     }
 
     // Edit: own private jobs, or any job for admins

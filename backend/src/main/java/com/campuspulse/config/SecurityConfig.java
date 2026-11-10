@@ -52,14 +52,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 .requestMatchers(HttpMethod.POST, "/api/jobs")
-                    .hasRole("ADMIN")
+                    .hasAnyRole("SUPER_ADMIN", "ADMIN")
 
                 .requestMatchers(HttpMethod.POST, "/api/job-catalog/import")
-                    .hasRole("ADMIN")
+                    .hasAnyRole("SUPER_ADMIN", "ADMIN")
 
                 // Role-based access (see _claude/plans/07-rbac.md)
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/resume/**").hasAnyRole("STUDENT", "ADMIN")
+                .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "HOD")
+                .requestMatchers("/api/resume/**").hasAnyRole("STUDENT", "ADMIN", "SUPER_ADMIN")
 
                 .anyRequest().authenticated()
             )

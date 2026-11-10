@@ -2,6 +2,7 @@ package com.campuspulse.service.auth;
 
 import com.campuspulse.config.AdminBootstrap;
 import com.campuspulse.entity.user.AppUser;
+import com.campuspulse.repository.org.InstitutionRepository;
 import com.campuspulse.repository.user.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,17 +14,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AdminBootstrap adminBootstrap;
+    private final InstitutionRepository institutionRepository;
 
     public AuthService(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AdminBootstrap adminBootstrap) {
+            AdminBootstrap adminBootstrap,
+            InstitutionRepository institutionRepository) {
 
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.adminBootstrap = adminBootstrap;
+        this.institutionRepository = institutionRepository;
     }
 
     /** Roles a person can pick when signing up. ADMIN only via ADMIN_EMAILS. */
@@ -34,7 +38,8 @@ public class AuthService {
             String name,
             String email,
             String password,
-            String requestedRole) {
+            String requestedRole,
+            String institutionCode) {
 
         String role = requestedRole == null
                 ? "FACULTY"
@@ -56,7 +61,13 @@ public class AuthService {
         user.setPassword(
                 passwordEncoder.encode(password)
         );
-        user.setRole(adminBootstrap.isAdminEmail(email) ? "ADMIN" : role);
+        user.setRole(adminBootstrap.isAdminEmail(email) ? "SUPER_ADMIN" : role);
+
+        // College by code (blank = the default college). Department is set later by an admin/HOD.
+        String code = institutionCode == null || institutionCode.isBlank() ? "DEFAULT" : institutionCode.trim();
+        user.setInstitutionId(institutionRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown college code: " + code))
+                .getId());
 
         return appUserRepository.save(user);
     }

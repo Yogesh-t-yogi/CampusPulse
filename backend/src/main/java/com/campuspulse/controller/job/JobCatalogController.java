@@ -1,7 +1,9 @@
 package com.campuspulse.controller.job;
 
 import com.campuspulse.entity.job.JobPosting;
+import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.job.JobCatalogProvider;
+import com.campuspulse.service.org.TenantService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,26 +23,43 @@ import java.util.Map;
 public class JobCatalogController {
 
     private final JobCatalogProvider jobCatalogProvider;
+    private final CurrentUserService currentUserService;
+    private final TenantService tenantService;
 
-    public JobCatalogController(JobCatalogProvider jobCatalogProvider) {
+    public JobCatalogController(
+            JobCatalogProvider jobCatalogProvider,
+            CurrentUserService currentUserService,
+            TenantService tenantService) {
         this.jobCatalogProvider = jobCatalogProvider;
+        this.currentUserService = currentUserService;
+        this.tenantService = tenantService;
+    }
+
+    private Long actingCollege() {
+        return tenantService.actingInstitutionId(currentUserService.getCurrentUser());
+    }
+
+    /** Platform admin imports into the global catalog, a college admin into their college's. */
+    private Long targetCatalog() {
+        var user = currentUserService.getCurrentUser();
+        return tenantService.isSuperAdmin(user) ? null : user.getInstitutionId();
     }
 
     @GetMapping
     public List<JobPosting> getCatalogJobs() {
-        return jobCatalogProvider.searchJobs(null, null, 200);
+        return jobCatalogProvider.searchJobs(null, null, 200, actingCollege());
     }
 
     @GetMapping("/skill-demand")
     public List<Map<String, Object>> getSkillDemand() {
-        return jobCatalogProvider.getSkillDemand();
+        return jobCatalogProvider.getSkillDemand(actingCollege());
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> importCsv(
             @RequestParam("file") MultipartFile file) throws IOException {
         try {
-            int imported = jobCatalogProvider.importCsv(file);
+            int imported = jobCatalogProvider.importCsv(file, targetCatalog());
             Map<String, Object> payload = new HashMap<>();
             payload.put("imported", imported);
             payload.put("message", "Dataset jobs imported successfully.");

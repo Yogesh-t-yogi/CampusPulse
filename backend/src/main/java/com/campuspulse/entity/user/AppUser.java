@@ -29,6 +29,23 @@ public class AppUser {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "institution_id")
+    private Long institutionId;
+
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    @Column(name = "program_id")
+    private Long programId;
+
+
+    public Long getInstitutionId() { return institutionId; }
+    public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public Long getProgramId() { return programId; }
+    public void setProgramId(Long programId) { this.programId = programId; }
+
     public AppUser() {
     }
 

@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Gives the ADMIN role to the emails listed in ADMIN_EMAILS
+ * Gives the SUPER_ADMIN (platform admin) role to the emails listed in ADMIN_EMAILS
  * (comma separated). Runs at startup and is also used on registration.
  */
 @Component
@@ -52,11 +52,11 @@ public class AdminBootstrap implements ApplicationRunner {
 
         appUserRepository.findAll().stream()
                 .filter(user -> isAdminEmail(user.getEmail()))
-                .filter(user -> !"ADMIN".equals(user.getRole()))
+                .filter(user -> !"SUPER_ADMIN".equals(user.getRole()))
                 .forEach(user -> {
-                    user.setRole("ADMIN");
+                    user.setRole("SUPER_ADMIN");
                     appUserRepository.save(user);
-                    log.info("Promoted user id {} to ADMIN", user.getId());
+                    log.info("Promoted user id {} to SUPER_ADMIN", user.getId());
                 });
     }
 }

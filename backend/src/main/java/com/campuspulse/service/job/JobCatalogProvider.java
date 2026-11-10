@@ -62,12 +62,22 @@ public class JobCatalogProvider implements JobSearchProvider {
             String keyword,
             String location,
             int limit) {
+        return searchJobs(keyword, location, limit, null);
+    }
+
+    public List<JobPosting> searchJobs(
+            String keyword,
+            String location,
+            int limit,
+            Long institutionId) {
         String normalizedKeyword = normalizeSearch(keyword);
         String normalizedLocation = normalizeSearch(location);
 
         return jobPostingRepository
                 .findBySourceOrderByCreatedAtDesc("DATASET")
                 .stream()
+                .filter(job -> job.getInstitutionId() == null
+                        || job.getInstitutionId().equals(institutionId))
                 .filter(job -> {
                     if (normalizedKeyword.isBlank()) {
                         return true;
@@ -88,6 +98,11 @@ public class JobCatalogProvider implements JobSearchProvider {
 
     @Transactional
     public int importCsv(MultipartFile file) throws IOException {
+        return importCsv(file, null);
+    }
+
+    @Transactional
+    public int importCsv(MultipartFile file, Long institutionId) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException(
                     "CSV file is required for import."
@@ -158,7 +173,8 @@ public class JobCatalogProvider implements JobSearchProvider {
 
                 createCatalogJob(
                         title, company, location, description,
-                        parseSkills(rawSkills)
+                        parseSkills(rawSkills),
+                        institutionId
                 );
                 imported++;
             }
@@ -174,6 +190,18 @@ public class JobCatalogProvider implements JobSearchProvider {
             String location,
             String description,
             List<String> skills) {
+        return createCatalogJob(title, company, location, description, skills, null);
+    }
+
+    /** institutionId null = global catalog; set = that college's catalog. */
+    @Transactional
+    public JobPosting createCatalogJob(
+            String title,
+            String company,
+            String location,
+            String description,
+            List<String> skills,
+            Long institutionId) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Job title is required.");
         }
@@ -186,6 +214,7 @@ public class JobCatalogProvider implements JobSearchProvider {
         job.setSource("DATASET");
         job.setJobUrl(null);
         job.setOwner(null);
+        job.setInstitutionId(institutionId);
 
         JobPosting savedJob = jobPostingRepository.save(job);
         List<String> normalizedSkills = skills == null ? List.of() : skills.stream()
@@ -208,9 +237,9 @@ public class JobCatalogProvider implements JobSearchProvider {
         return savedJob;
     }
 
-    public List<Map<String, Object>> getSkillDemand() {
+    public List<Map<String, Object>> getSkillDemand(Long institutionId) {
         Map<String, Long> counts = new HashMap<>();
-        for (Object[] row : jobRequiredSkillRepository.findDatasetSkillDemand()) {
+        for (Object[] row : jobRequiredSkillRepository.findDatasetSkillDemand(institutionId)) {
             if (row.length < 2 || row[0] == null || !(row[1] instanceof Number count)) {
                 continue;
             }

@@ -37,8 +37,15 @@ public class JobPosting {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "institution_id")
+    private Long institutionId;
+
+
     public JobPosting() {
     }
+
+    public Long getInstitutionId() { return institutionId; }
+    public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
 
     @PrePersist
     protected void onCreate() {

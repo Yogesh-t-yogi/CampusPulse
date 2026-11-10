@@ -46,12 +46,34 @@ public class Syllabus {
     @Column(name = "processing_message", columnDefinition = "TEXT")
     private String processingMessage;
 
+    @Column(name = "institution_id")
+    private Long institutionId;
+
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    @Column(name = "program_id")
+    private Long programId;
+
+    @Column(name = "semester")
+    private Integer semester;
+
+
     @OneToMany(
         mappedBy = "syllabus",
         cascade = CascadeType.ALL,
         orphanRemoval = true
     )
     private List<Subject> subjects = new ArrayList<>();
+
+    public Long getInstitutionId() { return institutionId; }
+    public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public Long getProgramId() { return programId; }
+    public void setProgramId(Long programId) { this.programId = programId; }
+    public Integer getSemester() { return semester; }
+    public void setSemester(Integer semester) { this.semester = semester; }
 
     public Syllabus() {
     }
