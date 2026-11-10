@@ -1,0 +1,84 @@
+/* Shared v2 controls built on the theme tokens. */
+.cp-theme-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-mode-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+}
+
+.cp-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cp-text-muted);
+  font: 500 13px var(--cp-font);
+  cursor: pointer;
+}
+
+.cp-mode-switch button.active {
+  background: var(--cp-accent);
+  color: var(--cp-on-accent);
+}
+
+.cp-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  color: var(--cp-text-2);
+  cursor: pointer;
+}
+
+.cp-icon-button:hover,
+.cp-mode-switch button:not(.active):hover {
+  color: var(--cp-accent);
+}
+
+.cp-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  color: var(--cp-text);
+  font: 500 14px var(--cp-font);
+  cursor: pointer;
+}
+
+.cp-button:hover {
+  border-color: var(--cp-accent);
+  color: var(--cp-accent);
+}
+
+.cp-button-primary {
+  background: var(--cp-accent);
+  border-color: var(--cp-accent);
+  color: var(--cp-on-accent);
+}
+
+.cp-button-primary:hover {
+  background: var(--cp-accent-strong);
+  color: var(--cp-on-accent);
+}
+
+.cp-button-danger:hover {
+  border-color: var(--cp-gap);
+  color: var(--cp-gap);
+}

@@ -15,6 +15,8 @@ import WorkflowSteps from "./components/WorkflowSteps";
 import { API_BASE_URL } from "./api";
 import "./App.css";
 import "./FeatureAdditions.css";
+import "./theme/components.css";
+import ThemeControls from "./components/ThemeControls";
 
 function getSyllabusId(payload) {
   if (!payload || typeof payload !== "object") return "";
@@ -491,19 +493,12 @@ function App() {
             )}
           </div>
 
+          <ThemeControls />
+
           <button
             type="button"
+            className="cp-button cp-button-danger"
             onClick={handleLogout}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#dc2626",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "600",
-            }}
           >
             Logout
           </button>

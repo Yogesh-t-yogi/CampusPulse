@@ -3,7 +3,7 @@
   padding: 20px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--cp-page);
 }
 
 .cr-roadmap-heading,
@@ -20,7 +20,7 @@
 }
 
 .cr-roadmap-heading > span {
-  color: #64748b;
+  color: var(--cp-text-muted);
   font-size: 13px;
 }
 
@@ -37,9 +37,9 @@
 .cr-roadmap li {
   min-width: 0;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--cp-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--cp-card);
   counter-increment: roadmap;
 }
 
@@ -47,7 +47,7 @@
   content: "STEP " counter(roadmap, decimal-leading-zero);
   display: block;
   margin-bottom: 8px;
-  color: #6558d3;
+  color: var(--cp-accent);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -56,7 +56,7 @@
 .cr-roadmap li p,
 .cr-roadmap-empty {
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--cp-text-2);
   line-height: 1.55;
 }
 
@@ -69,16 +69,16 @@
 .cr-resource-links a {
   display: inline-flex;
   padding: 8px 12px;
-  border: 1px solid #c7d2fe;
+  border: 1px solid var(--cp-accent-soft);
   border-radius: 8px;
-  color: #4338ca;
+  color: var(--cp-accent-strong);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
 }
 
 .cr-resource-links a:hover {
-  background: #eef2ff;
+  background: var(--cp-accent-tint);
 }
 
 .cg-print-header {
@@ -94,7 +94,7 @@
 }
 
 .cg-export-row p {
-  color: #64748b;
+  color: var(--cp-text-muted);
   font-size: 13px;
 }
 
@@ -106,7 +106,7 @@
   border: 0;
   border-radius: 8px;
   background: #5145cd;
-  color: #fff;
+  color: var(--cp-on-accent);
   cursor: pointer;
   font-weight: 700;
 }
@@ -129,23 +129,23 @@
 .jm-resume-section {
   min-width: 0;
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--cp-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--cp-card);
   box-shadow: 0 8px 25px rgb(15 23 42 / 4%);
 }
 
 .jm-dataset-card h2,
 .jm-resume-section h2 {
   margin: 8px 0;
-  color: #0f172a;
+  color: var(--cp-text);
   font-size: 21px;
 }
 
 .jm-dataset-card > p,
 .jm-resume-copy > p,
 .jm-demand-heading p {
-  color: #64748b;
+  color: var(--cp-text-muted);
   line-height: 1.55;
 }
 
@@ -158,7 +158,7 @@
 
 .jm-dataset-card label,
 .jm-resume-form > label:first-child {
-  color: #334155;
+  color: var(--cp-text-2);
   font-size: 13px;
   font-weight: 700;
 }
@@ -167,9 +167,9 @@
 .jm-resume-form input[type="file"] {
   width: 100%;
   padding: 10px;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--cp-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--cp-page);
 }
 
 .jm-dataset-card form button,
@@ -179,28 +179,28 @@
 
 .jm-dataset-card form button:disabled,
 .jm-resume-form > button:disabled {
-  background: #94a3b8;
+  background: var(--cp-text-muted);
   cursor: not-allowed;
 }
 
 .jm-dataset-card > small {
   display: block;
   margin-top: 12px;
-  color: #64748b;
+  color: var(--cp-text-muted);
   line-height: 1.5;
 }
 
 .jm-demand-heading h2 {
-  color: #0f172a;
+  color: var(--cp-text);
   font-size: 21px;
 }
 
 .jm-chart-refresh {
   width: 36px;
   height: 36px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--cp-border);
   border-radius: 9px;
-  background: #fff;
+  background: var(--cp-card);
   color: #5145cd;
   cursor: pointer;
   font-size: 20px;
@@ -215,11 +215,11 @@
 .jm-feature-empty,
 .jm-feature-error {
   margin: 16px 0 0;
-  color: #64748b;
+  color: var(--cp-text-muted);
 }
 
 .jm-feature-error {
-  color: #b91c1c;
+  color: var(--cp-gap-ink);
 }
 
 .jm-resume-section {
@@ -237,7 +237,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: #475569;
+  color: var(--cp-text-2);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -250,12 +250,12 @@
 .jm-resume-results {
   grid-column: 1 / -1;
   padding-top: 20px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--cp-border);
 }
 
 .jm-resume-results h3 {
   margin: 0 0 12px;
-  color: #0f172a;
+  color: var(--cp-text);
 }
 
 .jm-resume-results h3:not(:first-child) {
@@ -273,7 +273,7 @@
   gap: 8px 16px;
   align-items: center;
   padding: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--cp-border);
   border-radius: 10px;
 }
 
@@ -284,12 +284,12 @@
 
 .jm-resume-match-list article > div span,
 .jm-resume-match-list article > p {
-  color: #64748b;
+  color: var(--cp-text-muted);
   font-size: 13px;
 }
 
 .jm-resume-match-list article > b {
-  color: #4338ca;
+  color: var(--cp-accent-strong);
 }
 
 .jm-resume-match-list article > p,
@@ -313,7 +313,7 @@
 .jm-listing-actions input {
   min-width: 240px;
   padding: 10px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--cp-border);
   border-radius: 8px;
 }
 
@@ -333,15 +333,15 @@
   justify-content: center;
   gap: 16px;
   margin: 20px 0;
-  color: #475569;
+  color: var(--cp-text-2);
 }
 
 .jm-pagination button {
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--cp-border);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--cp-card);
+  color: var(--cp-text-2);
   cursor: pointer;
 }
 
@@ -390,8 +390,8 @@
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: #fff !important;
-    color: #111827 !important;
+    background: var(--cp-card) !important;
+    color: var(--cp-text) !important;
   }
 
   .cg-no-print {
@@ -403,8 +403,8 @@
     justify-content: space-between;
     gap: 20px;
     padding-bottom: 14px;
-    border-bottom: 1px solid #cbd5e1;
-    color: #111827;
+    border-bottom: 1px solid var(--cp-border);
+    color: var(--cp-text);
   }
 
   .cg-hero-icon {
