@@ -11,11 +11,15 @@ import reactor.util.retry.Retry;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class LlmService {
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(LlmService.class);
 
     private final WebClient webClient;
 
@@ -31,11 +35,27 @@ public class LlmService {
     @Value("${llm.timeout-seconds:120}")
     private long timeoutSeconds;
 
+    // Set to false after the provider rejects response_format once.
+    private volatile boolean jsonModeSupported = true;
+
     public LlmService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
 
+    /** Free text answer (temperature 0.2). */
     public String generateResponse(String prompt) {
+        return generate(prompt, false);
+    }
+
+    /**
+     * JSON answer: temperature 0 and the provider's JSON mode, so the reply is a
+     * single valid JSON object. The prompt must ask for a JSON object.
+     */
+    public String generateJson(String prompt) {
+        return generate(prompt, true);
+    }
+
+    private String generate(String prompt, boolean json) {
 
         String key = apiKey == null ? "" : apiKey.trim();
 
@@ -49,7 +69,7 @@ public class LlmService {
             );
         }
 
-        Map<String, Object> requestBody = Map.of(
+        Map<String, Object> requestBody = new HashMap<>(Map.of(
                 "model", model,
                 "messages", List.of(
                         Map.of(
@@ -57,25 +77,29 @@ public class LlmService {
                                 "content", prompt
                         )
                 ),
-                "temperature", 0.2,
+                "temperature", json ? 0.0 : 0.2,
                 "max_tokens", 8000
-        );
+        ));
+        if (json && jsonModeSupported) {
+            requestBody.put("response_format", Map.of("type", "json_object"));
+        }
 
         Map<?, ?> response;
         try {
-            response = webClient.post()
-                    .uri(apiUrl)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .timeout(Duration.ofSeconds(timeoutSeconds))
-                    // One retry for rate limits / temporary server errors.
-                    .retryWhen(Retry.backoff(1, Duration.ofSeconds(3))
-                            .filter(LlmService::isRetryable))
-                    .block();
+            try {
+                response = send(key, requestBody);
+            } catch (WebClientResponseException.BadRequest e) {
+                if (!requestBody.containsKey("response_format")) {
+                    throw e;
+                }
+                // Model doesn't support JSON mode: remember and retry without it.
+                log.warn("LLM rejected JSON mode; continuing without it: {}", e.getMessage());
+                jsonModeSupported = false;
+                requestBody.remove("response_format");
+                response = send(key, requestBody);
+            }
         } catch (RuntimeException exception) {
+
             WebClientResponseException http =
                     findCause(exception, WebClientResponseException.class);
             if (http != null) {
@@ -101,6 +125,21 @@ public class LlmService {
         }
 
         return extractContent(response);
+    }
+
+    private Map<?, ?> send(String key, Map<String, Object> requestBody) {
+        return webClient.post()
+                    .uri(apiUrl)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    // One retry for rate limits / temporary server errors.
+                    .retryWhen(Retry.backoff(1, Duration.ofSeconds(3))
+                            .filter(LlmService::isRetryable))
+                    .block();
     }
 
     private static boolean isRetryable(Throwable error) {
