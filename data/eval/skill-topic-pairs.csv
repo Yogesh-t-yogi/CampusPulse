@@ -1,0 +1,114 @@
+skill,topic_name,topic_description,label
+Java,Introduction to Java Programming,"Features of Java, JVM, data types, operators and control statements",MATCHED
+Java,Object Oriented Programming Concepts,"Classes, objects, inheritance, polymorphism and encapsulation",PARTIAL
+Java,Computer Organization,"CPU registers, instruction formats and memory hierarchy",GAP
+Object-Oriented Programming,Object Oriented Programming Concepts,"Classes, objects, inheritance, polymorphism and encapsulation",MATCHED
+Object-Oriented Programming,Introduction to C Programming,"Variables, loops, functions and arrays in C",GAP
+Python,Python Programming Basics,"Syntax, lists, dictionaries, functions and modules",MATCHED
+Python,Scripting Languages,"Shell scripting, Perl and Python for automation",PARTIAL
+Python,Digital Logic Design,"Boolean algebra, logic gates and flip-flops",GAP
+SQL,Structured Query Language,"DDL, DML, joins, subqueries and aggregate functions",MATCHED
+SQL,Relational Database Design,"ER model, normalization and relational algebra",PARTIAL
+SQL,Software Project Management,"Estimation, scheduling and risk management",GAP
+PostgreSQL,Structured Query Language,"DDL, DML, joins, subqueries and aggregate functions",PARTIAL
+PostgreSQL,Relational Database Management Systems,"Transactions, indexing and query processing in an RDBMS",PARTIAL
+PostgreSQL,Theory of Computation,"Finite automata, regular languages and Turing machines",GAP
+Database,Database Management Systems,"Data models, DBMS architecture, transactions and recovery",MATCHED
+Database,Computer Graphics,"Line drawing, transformations and clipping",GAP
+REST API,Web Services,"SOAP, RESTful services, HTTP methods and JSON",MATCHED
+REST API,Client Server Architecture,"Request response model, HTTP protocol and web servers",PARTIAL
+REST API,Numerical Methods,"Root finding, interpolation and numerical integration",GAP
+HTML,Web Technologies,"HTML5 elements, forms, tables and semantic markup",MATCHED
+CSS,Web Technologies,"HTML5 elements, CSS styling, box model and layouts",MATCHED
+CSS,Human Computer Interaction,"Usability principles, interface design and evaluation",PARTIAL
+JavaScript,Client Side Scripting,"JavaScript variables, functions, DOM manipulation and events",MATCHED
+JavaScript,Web Technologies,"HTML5 elements, CSS styling and introduction to scripting",PARTIAL
+JavaScript,Operating System Concepts,"Processes, threads, scheduling and deadlocks",GAP
+React,Front End Frameworks,"Component based UI development with React and state management",MATCHED
+React,Client Side Scripting,"JavaScript variables, functions, DOM manipulation and events",PARTIAL
+React,Data Mining,"Association rules, classification and clustering",GAP
+Node.js,Server Side Programming,"Building web servers with Node.js and Express",MATCHED
+Node.js,Client Server Architecture,"Request response model, HTTP protocol and web servers",PARTIAL
+Spring Boot,Enterprise Application Development,"Spring framework, dependency injection and building REST services",MATCHED
+Spring Boot,Java Enterprise Edition,"Servlets, JSP and JDBC for web applications",PARTIAL
+Spring Boot,Discrete Mathematics,"Sets, relations, graphs and combinatorics",GAP
+Git,Software Configuration Management,"Version control systems, branching and merging with Git",MATCHED
+Git,Software Engineering,"SDLC models, requirements, design and testing",PARTIAL
+Git,Signals and Systems,"Continuous and discrete signals, Fourier transform",GAP
+Docker,Cloud Computing,"Virtualization, containers, service models and deployment",PARTIAL
+Docker,Containerization and DevOps,"Docker images, containers, Dockerfiles and registries",MATCHED
+Docker,Compiler Design,"Lexical analysis, parsing and code generation",GAP
+Kubernetes,Container Orchestration,"Kubernetes pods, deployments, services and scaling",MATCHED
+Kubernetes,Cloud Computing,"Virtualization, containers, service models and deployment",PARTIAL
+Kubernetes,Engineering Mathematics,"Matrices, calculus and differential equations",GAP
+AWS,Cloud Computing,"Virtualization, IaaS PaaS SaaS, public cloud providers",PARTIAL
+AWS,Cloud Platforms,"Amazon Web Services EC2, S3, IAM and hands-on deployment",MATCHED
+AWS,Professional Ethics,"Ethics in engineering and professional responsibility",GAP
+Linux,Operating Systems,"Process management, memory management and file systems",PARTIAL
+Linux,Unix and Shell Programming,"Linux commands, file permissions and shell scripts",MATCHED
+Linux,Engineering Graphics,"Orthographic projection and sectional views",GAP
+CI/CD,DevOps Practices,"Continuous integration and continuous delivery pipelines",MATCHED
+CI/CD,Software Testing,"Unit, integration and system testing techniques",PARTIAL
+CI/CD,Microprocessors,"8085 architecture, instruction set and interfacing",GAP
+Machine Learning,Machine Learning,"Supervised and unsupervised learning, regression and classification",MATCHED
+Machine Learning,Artificial Intelligence,"Search algorithms, knowledge representation and reasoning",PARTIAL
+Machine Learning,Data Mining,"Association rules, classification and clustering",PARTIAL
+Machine Learning,Computer Networks,"OSI model, TCP/IP and routing protocols",GAP
+Deep Learning,Neural Networks and Deep Learning,"Perceptrons, backpropagation, CNNs and RNNs",MATCHED
+Deep Learning,Machine Learning,"Supervised and unsupervised learning, regression and classification",PARTIAL
+Deep Learning,Database Management Systems,"Data models, DBMS architecture, transactions and recovery",GAP
+Statistics,Probability and Statistics,"Random variables, distributions, hypothesis testing",MATCHED
+Statistics,Data Analytics,"Descriptive analytics, exploratory data analysis",PARTIAL
+Statistics,Web Technologies,"HTML5 elements, CSS styling, box model and layouts",GAP
+Pandas,Python for Data Science,"NumPy arrays, Pandas DataFrames and data cleaning",MATCHED
+Pandas,Python Programming Basics,"Syntax, lists, dictionaries, functions and modules",PARTIAL
+Data Visualization,Data Visualization,"Charts, dashboards and visual encoding of data",MATCHED
+Data Visualization,Data Analytics,"Descriptive analytics, exploratory data analysis",PARTIAL
+Data Visualization,Embedded Systems,"Microcontrollers, interrupts and real-time systems",GAP
+Power BI,Business Intelligence,"Data warehousing, OLAP and reporting dashboards",PARTIAL
+Power BI,Theory of Computation,"Finite automata, regular languages and Turing machines",GAP
+ETL,Data Warehousing,"ETL process, star schema, fact and dimension tables",MATCHED
+ETL,Database Management Systems,"Data models, DBMS architecture, transactions and recovery",PARTIAL
+Apache Spark,Big Data Analytics,"Hadoop, MapReduce and Spark for large scale processing",MATCHED
+Apache Spark,Distributed Systems,"Distributed computing models, consistency and fault tolerance",PARTIAL
+Data Structures,Data Structures,"Arrays, linked lists, stacks, queues, trees and graphs",MATCHED
+Data Structures,Design and Analysis of Algorithms,"Divide and conquer, greedy and dynamic programming",PARTIAL
+Algorithms,Design and Analysis of Algorithms,"Divide and conquer, greedy and dynamic programming",MATCHED
+Algorithms,Data Structures,"Arrays, linked lists, stacks, queues, trees and graphs",PARTIAL
+Algorithms,Professional Communication,"Report writing, presentations and soft skills",GAP
+Networking,Computer Networks,"OSI model, TCP/IP, routing and switching",MATCHED
+Networking,Data Communication,"Transmission media, modulation and error detection",PARTIAL
+Networking,Object Oriented Programming Concepts,"Classes, objects, inheritance, polymorphism and encapsulation",GAP
+Network Security,Cryptography and Network Security,"Symmetric and public key cryptography, firewalls and IDS",MATCHED
+Network Security,Computer Networks,"OSI model, TCP/IP, routing and switching",PARTIAL
+Cryptography,Cryptography and Network Security,"Symmetric and public key cryptography, firewalls and IDS",MATCHED
+Cryptography,Discrete Mathematics,"Sets, relations, number theory and combinatorics",PARTIAL
+Operating Systems,Operating Systems,"Process management, memory management and file systems",MATCHED
+Operating Systems,Computer Organization,"CPU registers, instruction formats and memory hierarchy",PARTIAL
+Selenium,Software Testing,"Unit, integration and system testing techniques, test automation tools",PARTIAL
+Selenium,Automated Testing Tools,"Selenium WebDriver, test scripts and frameworks",MATCHED
+Selenium,Microprocessors,"8085 architecture, instruction set and interfacing",GAP
+Quality Assurance,Software Quality Assurance,"Quality models, reviews, standards and metrics",MATCHED
+Quality Assurance,Software Testing,"Unit, integration and system testing techniques",PARTIAL
+Agile,Agile Software Development,"Scrum, sprints, user stories and retrospectives",MATCHED
+Agile,Software Engineering,"SDLC models, requirements, design and testing",PARTIAL
+Agile,Computer Graphics,"Line drawing, transformations and clipping",GAP
+C,Introduction to C Programming,"Variables, loops, functions and arrays in C",MATCHED
+C++,Object Oriented Programming with C++,"Classes, constructors, operator overloading and templates",MATCHED
+C++,Introduction to C Programming,"Variables, loops, functions and arrays in C",PARTIAL
+Embedded C,Embedded Systems,"Microcontrollers, interrupts and real-time systems, embedded C programming",MATCHED
+Microcontrollers,Microprocessors and Microcontrollers,"8051 architecture, interfacing and programming",MATCHED
+Microcontrollers,Embedded Systems,"Microcontrollers, interrupts and real-time systems",PARTIAL
+IoT,Internet of Things,"Sensors, IoT architecture, protocols like MQTT",MATCHED
+IoT,Embedded Systems,"Microcontrollers, interrupts and real-time systems",PARTIAL
+Kotlin,Mobile Application Development,"Android activities, layouts and app lifecycle with Kotlin",MATCHED
+Android SDK,Mobile Application Development,"Android activities, layouts and app lifecycle with Kotlin",MATCHED
+Android SDK,Object Oriented Programming Concepts,"Classes, objects, inheritance, polymorphism and encapsulation",GAP
+Figma,Human Computer Interaction,"Usability principles, interface design and evaluation",PARTIAL
+UI/UX,Human Computer Interaction,"Usability principles, interface design and evaluation",MATCHED
+UI/UX,Database Management Systems,"Data models, DBMS architecture, transactions and recovery",GAP
+Large Language Models,Natural Language Processing,"Text processing, language models, transformers and embeddings",PARTIAL
+Large Language Models,Data Structures,"Arrays, linked lists, stacks, queues, trees and graphs",GAP
+Prompt Engineering,Artificial Intelligence,"Search algorithms, knowledge representation and reasoning",GAP
+Communication,Professional Communication,"Report writing, presentations and soft skills",MATCHED
+Troubleshooting,Computer Hardware and Maintenance,"Assembling PCs, diagnosing faults and repair",PARTIAL

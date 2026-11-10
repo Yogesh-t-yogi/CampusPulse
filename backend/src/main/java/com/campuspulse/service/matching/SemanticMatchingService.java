@@ -32,8 +32,8 @@ public class SemanticMatchingService {
             SkillEmbeddingCache skillEmbeddingCache,
             SkillAliasService skillAliasService,
             TopicRepository topicRepository,
-            @Value("${matching.matched-threshold:0.70}") double matchedThreshold,
-            @Value("${matching.partial-threshold:0.50}") double partialThreshold) {
+            @Value("${matching.matched-threshold:0.50}") double matchedThreshold,
+            @Value("${matching.partial-threshold:0.25}") double partialThreshold) {
 
         this.jobRequiredSkillRepository =
                 jobRequiredSkillRepository;

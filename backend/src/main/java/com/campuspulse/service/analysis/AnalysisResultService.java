@@ -23,8 +23,8 @@ import java.util.List;
 @Service
 public class AnalysisResultService {
 
-    /** Bump when matching rules change so saved results are recomputed. 2 = hybrid matching. */
-    static final int ALGO_VERSION = 2;
+    /** Bump when matching rules change so saved results are recomputed. 2 = hybrid matching, 3 = calibrated thresholds. */
+    static final int ALGO_VERSION = 3;
 
     private static final Logger log = LoggerFactory.getLogger(AnalysisResultService.class);
 
