@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import api from "../apiClient";
 import { ArrowRight, BookOpen, Check, Layers, ListChecks, Pencil } from "lucide-react";
 import { Button, PageHeader, StatCard } from "../ui";
+import CourseOutcomes from "../components/CourseOutcomes";
 import {
   SubjectEditor,
   TopicEditor,
@@ -547,6 +548,12 @@ function Curriculum({ syllabusId, onNext, canManage = true }) {
           </div>
         )}
       </section>
+
+      {subjects.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <CourseOutcomes syllabusId={syllabusId} canManage={canManage} />
+        </div>
+      )}
 
       <footer className="cc-footer">
         CampusPulse · Curriculum intelligence

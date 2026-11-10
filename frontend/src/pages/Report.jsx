@@ -7,11 +7,13 @@ import Dashboard from "./Dashboard";
 import GapAnalysis from "./GapAnalysis";
 import AIRecommendations from "./AIRecommendations";
 import CompareJobs from "./CompareJobs";
+import OutcomesReport from "./OutcomesReport";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "skills", label: "Skill by skill" },
   { id: "recommendations", label: "Recommendations" },
+  { id: "outcomes", label: "Outcomes (CO/PO)" },
   { id: "compare", label: "Compare jobs" },
 ];
 
@@ -92,6 +94,9 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
       <div role="tabpanel">
         {tab === "overview" && <Dashboard key={`o-${version}`} {...pageProps} />}
         {tab === "skills" && <GapAnalysis key={`s-${version}`} {...pageProps} />}
+        {tab === "outcomes" && (
+          <OutcomesReport key={`co-${version}`} syllabusId={syllabusId} jobId={jobId} />
+        )}
         {tab === "compare" && (
           <CompareJobs syllabusId={syllabusId} jobs={jobs} currentJobId={jobId} />
         )}

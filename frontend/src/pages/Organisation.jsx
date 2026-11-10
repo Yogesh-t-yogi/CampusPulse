@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Building2, GraduationCap, Layers, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, GraduationCap, Layers, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import ProgramOutcomes from "../components/ProgramOutcomes";
 import api, { errorMessage } from "../apiClient";
 import { can } from "../permissions";
 import {
@@ -19,7 +20,7 @@ import { useToast } from "../ui/toast";
 
 // One CRUD section: table + drawer form + delete confirm.
 // fields: [{key, label, required?, type?, options?, hint?, placeholder?}]
-function CrudSection({ title, icon, endpoint, query, columns, fields, canEdit, emptyText, makeBody, onChanged }) {
+function CrudSection({ title, icon, endpoint, query, columns, fields, canEdit, emptyText, makeBody, onChanged, extraActions }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,7 @@ function CrudSection({ title, icon, endpoint, query, columns, fields, canEdit, e
           width: "1%",
           render: (row) => (
             <div className="ui-row-actions">
+              {extraActions?.(row)}
               <IconButton icon={Pencil} label={`Edit ${row.name}`} onClick={() => open(row)} />
               <IconButton icon={Trash2} label={`Delete ${row.name}`} variant="ghost-danger" onClick={() => setDeleting(row)} />
             </div>
@@ -197,6 +199,7 @@ function Organisation({ user, onChanged }) {
   const [tab, setTab] = useState(tabs[0].id);
   const [departments, setDepartments] = useState([]);
   const [version, setVersion] = useState(0);
+  const [outcomesFor, setOutcomesFor] = useState(null);
 
   // Department list feeds the program form's department picker.
   useEffect(() => {
@@ -316,8 +319,19 @@ function Organisation({ user, onChanged }) {
             { key: "durationSemesters", label: "Semesters", type: "number", default: "8" },
           ]}
           makeBody={(form) => ({ ...form, departmentId: String(form.departmentId), durationSemesters: String(form.durationSemesters || "8") })}
+          extraActions={(row) => (
+            <Button variant="ghost" icon={ListChecks} onClick={() => setOutcomesFor(row)}>
+              Outcomes
+            </Button>
+          )}
         />
       )}
+
+      <ProgramOutcomes
+        program={outcomesFor}
+        canEdit={can(role, "managePrograms")}
+        onClose={() => setOutcomesFor(null)}
+      />
     </Page>
   );
 }
