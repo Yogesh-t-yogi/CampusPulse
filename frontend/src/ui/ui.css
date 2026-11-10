@@ -383,3 +383,17 @@
 /* New page header / stat grids inside older page containers (.page-content). */
 .page-content > .ui-page-header,
 .page-content > .ui-grid { margin-bottom: 20px; }
+
+/* Centered single-card screens (change password). */
+.ui-center-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--cp-page);
+  color: var(--cp-text);
+}
+.ui-center-card { width: 100%; max-width: 440px; }
+.ui-center-title { margin: 14px 0 6px; font-size: 22px; color: var(--cp-text); }
+
+.ui-import-table { max-height: 360px; overflow: auto; }

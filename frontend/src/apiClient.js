@@ -5,6 +5,7 @@ export const TOKEN_KEY = "campuspulse_token";
 export const SESSION_EXPIRED_EVENT = "campuspulse:session-expired";
 // Platform admins can act in another college; the backend reads this header.
 export const INSTITUTION_KEY = "campuspulse_institution_id";
+export const PASSWORD_CHANGE_EVENT = "campuspulse:password-change-required";
 
 // One axios instance for the whole app: base URL, login token, and
 // a single place that reacts to an expired session (HTTP 401).
@@ -27,6 +28,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    if (error.response?.data?.code === "PASSWORD_CHANGE_REQUIRED") {
+      window.dispatchEvent(new Event(PASSWORD_CHANGE_EVENT));
     }
     return Promise.reject(error);
   }

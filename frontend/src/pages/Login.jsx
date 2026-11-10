@@ -36,7 +36,7 @@ function Login({ onLogin, onShowRegister, notice }) {
         throw new Error("The server did not return an authentication token.");
       }
 
-      onLogin(data.token);
+      onLogin(data.token, Boolean(data.mustChangePassword));
     } catch (err) {
       setError(
         err.message || "Unable to connect to CampusPulse. Check your backend."

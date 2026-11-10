@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Copy, KeyRound, Pencil, Trash2, UserPlus, Users as UsersIcon } from "lucide-react";
+import { Copy, FileSpreadsheet, KeyRound, Pencil, Trash2, UserPlus, Users as UsersIcon } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import { assignableRoles, roleLabel } from "../permissions";
 import {
@@ -18,9 +18,10 @@ import {
   SearchInput,
 } from "../ui";
 import { useToast } from "../ui/toast";
+import StudentImport from "../components/StudentImport";
 
 const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "HOD", "FACULTY", "STUDENT"];
-const EMPTY_FORM = { name: "", email: "", role: "STUDENT", departmentId: "", programId: "" };
+const EMPTY_FORM = { name: "", email: "", role: "STUDENT", departmentId: "", programId: "", rollNumber: "", batchYear: "" };
 
 // Accounts of the current college (HOD: own department).
 // Index, create (one-time password), edit role/department/program, reset password, delete.
@@ -44,6 +45,7 @@ function Users({ currentUser }) {
   const [resetting, setResetting] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -84,6 +86,8 @@ function Users({ currentUser }) {
             role: user.role,
             departmentId: user.departmentId ? String(user.departmentId) : "",
             programId: user.programId ? String(user.programId) : "",
+            rollNumber: user.rollNumber || "",
+            batchYear: user.batchYear ? String(user.batchYear) : "",
           }
         : { ...EMPTY_FORM, role: roles.includes("STUDENT") ? "STUDENT" : roles[0], departmentId: isHod ? ownDepartmentId : "" }
     );
@@ -97,6 +101,8 @@ function Users({ currentUser }) {
       role: form.role,
       departmentId: form.departmentId || null,
       programId: form.role === "STUDENT" ? form.programId || null : null,
+      rollNumber: form.rollNumber,
+      batchYear: form.batchYear || null,
     };
     try {
       if (editing === "new") {
@@ -170,7 +176,15 @@ function Users({ currentUser }) {
             {user.name}
             {user.id === currentUser?.id && " (you)"}
           </strong>
-          <small>{user.email}</small>
+          <small>
+            {user.email}
+            {user.rollNumber ? ` · ${user.rollNumber}` : ""}
+          </small>
+          {user.mustChangePassword && (
+            <small>
+              <Badge tone="warning">Waiting for first sign-in</Badge>
+            </small>
+          )}
         </span>
       ),
     },
@@ -223,9 +237,14 @@ function Users({ currentUser }) {
             : `People of ${currentUser?.institution?.name || "this college"}. Role and placement changes apply at the next sign-in.`
         }
         actions={
-          <Button variant="primary" icon={UserPlus} onClick={() => openEditor(null)} disabled={roles.length === 0}>
-            Add user
-          </Button>
+          <>
+            <Button icon={FileSpreadsheet} onClick={() => setImportOpen(true)} disabled={roles.length === 0}>
+              Import from Excel
+            </Button>
+            <Button variant="primary" icon={UserPlus} onClick={() => openEditor(null)} disabled={roles.length === 0}>
+              Add user
+            </Button>
+          </>
         }
       />
 
@@ -331,11 +350,20 @@ function Users({ currentUser }) {
               </select>
             </Field>
           )}
-          {editing === "new" && (
-            <Alert tone="info">Adding many students at once from Excel comes next (Phase 6.5).</Alert>
+          {form.role === "STUDENT" && (
+            <div className="ui-form-row">
+              <Field label="Roll number">
+                <input value={form.rollNumber} onChange={(e) => setForm({ ...form, rollNumber: e.target.value })} maxLength={50} placeholder="21CS001" />
+              </Field>
+              <Field label="Batch (joining year)">
+                <input type="number" value={form.batchYear} onChange={(e) => setForm({ ...form, batchYear: e.target.value })} min={1990} max={2100} placeholder="2024" />
+              </Field>
+            </div>
           )}
         </form>
       </Drawer>
+
+      <StudentImport open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
 
       <Modal
         open={Boolean(secret)}

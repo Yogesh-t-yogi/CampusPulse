@@ -1,7 +1,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import api, { INSTITUTION_KEY, SESSION_EXPIRED_EVENT } from "./apiClient";
+import api, { INSTITUTION_KEY, PASSWORD_CHANGE_EVENT, SESSION_EXPIRED_EVENT } from "./apiClient";
+import ChangePassword from "./pages/ChangePassword";
 
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -41,6 +42,8 @@ const PAGE_PATHS = {
   Organisation: "/organisation",
   Users: "/users",
 };
+
+const MUST_CHANGE_KEY = "campuspulse_must_change";
 
 // Header title per page.
 const PAGE_TITLES = {
@@ -107,6 +110,10 @@ function App() {
     () => sessionStorage.getItem(INSTITUTION_KEY) || ""
   );
   const [pageVersion, setPageVersion] = useState(0);
+  // One-time password: the user must set their own before using the app.
+  const [mustChangePassword, setMustChangePassword] = useState(
+    () => sessionStorage.getItem(MUST_CHANGE_KEY) === "1"
+  );
 
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
@@ -129,8 +136,11 @@ function App() {
   const [jobsError, setJobsError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
 
-  const handleLogin = (jwtToken) => {
+  const handleLogin = (jwtToken, mustChange = false) => {
     sessionStorage.setItem("campuspulse_token", jwtToken);
+    if (mustChange) sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+    else sessionStorage.removeItem(MUST_CHANGE_KEY);
+    setMustChangePassword(mustChange);
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
 
@@ -145,6 +155,8 @@ function App() {
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem("campuspulse_token");
     sessionStorage.removeItem(INSTITUTION_KEY);
+    sessionStorage.removeItem(MUST_CHANGE_KEY);
+    setMustChangePassword(false);
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
 
@@ -166,8 +178,16 @@ function App() {
       handleLogout();
       setSessionNotice("Your session expired. Sign in again.");
     };
+    const onMustChange = () => {
+      sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+      setMustChangePassword(true);
+    };
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    window.addEventListener(PASSWORD_CHANGE_EVENT, onMustChange);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+      window.removeEventListener(PASSWORD_CHANGE_EVENT, onMustChange);
+    };
   }, [handleLogout]);
 
   // Bare "/" or unknown paths go to the default page.
@@ -323,6 +343,10 @@ function App() {
       .then(({ data }) => {
         if (cancelled) return;
         setCurrentUser(data);
+        if (data.mustChangePassword) {
+          sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+          setMustChangePassword(true);
+        }
         // Students and faculty always see their own mode; admins can switch.
         if (data.role === "SUPER_ADMIN") {
           api
@@ -430,6 +454,22 @@ function App() {
         notice={sessionNotice}
         onLogin={handleLogin}
         onShowRegister={() => setAuthPage("register")}
+      />
+    );
+  }
+
+  if (mustChangePassword) {
+    return (
+      <ChangePassword
+        user={currentUser}
+        onLogout={handleLogout}
+        onChanged={() => {
+          sessionStorage.removeItem(MUST_CHANGE_KEY);
+          setMustChangePassword(false);
+          setPageVersion((value) => value + 1);
+          void refreshSyllabi();
+          void refreshJobs();
+        }}
       />
     );
   }
