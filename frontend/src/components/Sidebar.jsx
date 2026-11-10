@@ -5,6 +5,8 @@ import {
   ChartNoAxesCombined,
   Sparkles,
   FileUp,
+  TrendingUp,
+  Database,
 } from "lucide-react";
 import api from "../apiClient";
 import { isPageAvailable, WORKFLOW_STEPS } from "../workflow";
@@ -14,7 +16,12 @@ const ICONS = {
   Curriculum: BookOpen,
   "Job Market": BriefcaseBusiness,
   Report: ChartNoAxesCombined,
+  "Market insights": TrendingUp,
+  "Job catalog": Database,
 };
+
+const EXTRA_PAGES = [{ page: "Market insights", label: "Market insights" }];
+const ADMIN_PAGES = [{ page: "Job catalog", label: "Job catalog" }];
 
 const STATUS_CHECK_MS = 60000;
 
@@ -51,7 +58,7 @@ function useServiceStatus() {
   return status;
 }
 
-function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob }) {
+function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob, isAdmin }) {
   const status = useServiceStatus();
 
   return (
@@ -85,7 +92,24 @@ function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob }) {
               className={activePage === step.page ? "nav-item active" : "nav-item"}
             >
               <Icon size={19} />
-              <span>{step.page}</span>
+              <span>{step.label}</span>
+            </button>
+          );
+        })}
+
+        <p className="nav-title">TOOLS</p>
+        {EXTRA_PAGES.concat(isAdmin ? ADMIN_PAGES : []).map((item) => {
+          const Icon = ICONS[item.page];
+          return (
+            <button
+              key={item.page}
+              type="button"
+              onClick={() => setActivePage(item.page)}
+              aria-current={activePage === item.page ? "page" : undefined}
+              className={activePage === item.page ? "nav-item active" : "nav-item"}
+            >
+              <Icon size={19} />
+              <span>{item.label}</span>
             </button>
           );
         })}

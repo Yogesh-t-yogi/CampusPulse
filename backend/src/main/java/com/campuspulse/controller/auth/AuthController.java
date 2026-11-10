@@ -1,6 +1,7 @@
 package com.campuspulse.controller.auth;
 
 import com.campuspulse.entity.user.AppUser;
+import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.auth.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,24 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final CurrentUserService currentUserService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService,
+            CurrentUserService currentUserService) {
         this.authService = authService;
+        this.currentUserService = currentUserService;
+    }
+
+    // Who is logged in (used by the frontend to show admin-only tools).
+    @GetMapping("/me")
+    public Map<String, Object> me() {
+        AppUser user = currentUserService.getCurrentUser();
+        return Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "role", user.getRole());
     }
 
     @PostMapping("/register")

@@ -22,6 +22,8 @@ const PAGE_PATHS = {
   Curriculum: "/curriculum",
   "Job Market": "/jobs",
   Report: "/report",
+  "Market insights": "/insights",
+  "Job catalog": "/catalog",
 };
 
 // Old page URLs now open the matching Report tab.
@@ -74,6 +76,8 @@ function App() {
     [navigate]
   );
   const [sessionNotice, setSessionNotice] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const isAdmin = currentUser?.role === "ADMIN";
 
   const [token, setToken] = useState(
     () => sessionStorage.getItem("campuspulse_token")
@@ -115,6 +119,7 @@ function App() {
     sessionStorage.removeItem("campuspulse_job_id");
 
     setToken(null);
+    setCurrentUser(null);
     setWorkflowNotice("");
     setSyllabi([]);
     setJobs([]);
@@ -279,6 +284,19 @@ function App() {
     }
   }, [token]);
 
+  // Who is logged in (role decides whether admin tools are shown).
+  useEffect(() => {
+    if (!token) return undefined;
+    let cancelled = false;
+    api
+      .get("/api/auth/me")
+      .then(({ data }) => !cancelled && setCurrentUser(data))
+      .catch(() => !cancelled && setCurrentUser(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   // Load the user's saved analysis inputs after login.
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -386,9 +404,37 @@ function App() {
       case "Job Market":
         return (
           <JobMarket
+            key="choose"
+            section="choose"
+            isAdmin={isAdmin}
             selectedJobId={selectedJobId}
             hasSyllabus={Boolean(selectedSyllabusId)}
             onJobCreated={handleJobCreated}
+            onJobSelected={handleJobSelected}
+            onCatalogImported={refreshJobs}
+          />
+        );
+
+      case "Market insights":
+        return (
+          <JobMarket
+            key="insights"
+            section="insights"
+            isAdmin={isAdmin}
+            selectedJobId={selectedJobId}
+            hasSyllabus={Boolean(selectedSyllabusId)}
+            onJobSelected={handleJobSelected}
+          />
+        );
+
+      case "Job catalog":
+        return (
+          <JobMarket
+            key="catalog"
+            section="catalog"
+            isAdmin={isAdmin}
+            selectedJobId={selectedJobId}
+            hasSyllabus={Boolean(selectedSyllabusId)}
             onJobSelected={handleJobSelected}
             onCatalogImported={refreshJobs}
           />
@@ -427,6 +473,7 @@ function App() {
         setActivePage={setActivePage}
         hasSyllabus={Boolean(selectedSyllabusId)}
         hasJob={Boolean(selectedJobId)}
+        isAdmin={isAdmin}
       />
 
       <main className="main-content">

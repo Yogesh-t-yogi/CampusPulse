@@ -13,7 +13,29 @@ import {
 
 const JOBS_PER_PAGE = 24;
 
+// One component, three pages: choose a job (everyone), market insights
+// (everyone), and catalog management (admins only).
+const SECTION_COPY = {
+  choose: {
+    eyebrow: "STEP 3 · CHOOSE A JOB",
+    title: "Choose a job",
+    text: "Pick a role from the catalog or paste a job description. Its skills are compared with your curriculum.",
+  },
+  insights: {
+    eyebrow: "MARKET INSIGHTS",
+    title: "Market insights",
+    text: "See which skills employers ask for most, and match a resume against the job catalog.",
+  },
+  catalog: {
+    eyebrow: "ADMIN · JOB CATALOG",
+    title: "Job catalog",
+    text: "Import job datasets and keep the shared catalog's skill lists up to date.",
+  },
+};
+
 function JobMarket({
+  section = "choose",
+  isAdmin = false,
   selectedJobId,
   hasSyllabus,
   onJobCreated,
@@ -408,12 +430,9 @@ function JobMarket({
     <main className="page-content cp-jobs">
       <section className="jm-hero">
         <div>
-          <span className="jm-eyebrow">INDUSTRY INSIGHTS · SKILL DISCOVERY</span>
-          <h1>Job Market</h1>
-          <p>
-            Explore industry job requirements, discover in-demand skills, and
-            use AI to identify the capabilities employers are looking for.
-          </p>
+          <span className="jm-eyebrow">{SECTION_COPY[section].eyebrow}</span>
+          <h1>{SECTION_COPY[section].title}</h1>
+          <p>{SECTION_COPY[section].text}</p>
         </div>
 
         <div className="jm-hero-icon" aria-hidden="true">
@@ -421,6 +440,7 @@ function JobMarket({
         </div>
       </section>
 
+      {section === "choose" && (
       <section className="jm-custom-job">
         <div>
           <span className="jm-eyebrow">PERSONALIZED ANALYSIS</span>
@@ -520,8 +540,11 @@ function JobMarket({
           </button>
         </form>
       </section>
+      )}
 
+      {(section === "insights" || (section === "catalog" && isAdmin)) && (
       <section className="jm-dataset-section">
+      {section === "catalog" && isAdmin && (
         <div className="jm-dataset-card">
           <span className="jm-eyebrow">FREE LOCAL DATASET</span>
           <h2>Import job postings from CSV</h2>
@@ -547,7 +570,9 @@ function JobMarket({
             location/city, description, skills/required_skills.
           </small>
         </div>
+        )}
 
+      {section === "insights" && (
         <div className="jm-dataset-card jm-demand-card">
           <div className="jm-demand-heading">
             <div>
@@ -595,8 +620,11 @@ function JobMarket({
             </div>
           )}
         </div>
+        )}
       </section>
+      )}
 
+      {section === "insights" && (
       <section className="jm-resume-section">
         <div className="jm-resume-copy">
           <span className="jm-eyebrow">STUDENT RESUME MATCHING</span>
@@ -685,6 +713,7 @@ function JobMarket({
           </div>
         )}
       </section>
+      )}
 
       {error && (
         <div className="jm-alert jm-alert-error" role="alert">
@@ -704,6 +733,7 @@ function JobMarket({
         </div>
       )}
 
+      {section !== "insights" && (
       <section className="jm-stats">
         <article className="jm-stat-card">
           <span className="jm-stat-icon jm-icon-purple">▤</span>
@@ -741,7 +771,9 @@ function JobMarket({
           </div>
         </article>
       </section>
+      )}
 
+      {section === "choose" && (
       <section className="jm-info-panel">
         <div className="jm-info-icon">✦</div>
         <div>
@@ -754,7 +786,9 @@ function JobMarket({
           </p>
         </div>
       </section>
+      )}
 
+      {section !== "insights" && (
       <section className="jm-listing-section">
         <div className="jm-section-header">
           <div>
@@ -884,6 +918,7 @@ function JobMarket({
                         : "AI-powered skill discovery"}
                     </p>
 
+                    {(isAdmin || job.source === "USER_PROVIDED") && (
                     <button
                       type="button"
                       className="jm-primary-button"
@@ -899,6 +934,7 @@ function JobMarket({
                         <>✦ Extract Skills with AI</>
                       )}
                     </button>
+                    )}
                     <button
                       type="button"
                       className="jm-secondary-button"
@@ -937,6 +973,7 @@ function JobMarket({
           </nav>
         )}
       </section>
+      )}
 
       <footer className="jm-footer">
         CampusPulse · Industry skill intelligence
