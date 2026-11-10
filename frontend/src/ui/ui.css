@@ -369,3 +369,17 @@
 .ui-step-done .ui-step-dot { border-color: transparent; background: var(--cp-matched-bg); color: var(--cp-matched-ink); }
 .ui-step-current .ui-step-dot { border-color: var(--cp-accent); color: var(--cp-accent); }
 .ui-step-current { color: var(--cp-text); font-weight: 600; }
+
+/* Upload page card inside the new layout (old .upload-card had its own page centering). */
+.cp-upload-card {
+  max-width: none;
+  margin: 0;
+  border: 1px solid var(--cp-border);
+  border-radius: var(--cp-radius-card);
+  background: var(--cp-card);
+  box-shadow: none;
+}
+
+/* New page header / stat grids inside older page containers (.page-content). */
+.page-content > .ui-page-header,
+.page-content > .ui-grid { margin-bottom: 20px; }

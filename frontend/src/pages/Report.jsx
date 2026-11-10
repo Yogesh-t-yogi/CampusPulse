@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Download, RefreshCw } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
+import { Button, PageHeader } from "../ui";
 import Dashboard from "./Dashboard";
 import GapAnalysis from "./GapAnalysis";
 import AIRecommendations from "./AIRecommendations";
@@ -49,34 +50,23 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
 
   return (
     <div className="cp-report">
-      <header className="cp-report-header">
-        <div>
-          <h1>Skill gap report</h1>
-          <p>
-            {syllabusName || "Selected syllabus"} · {jobTitle || "Selected job"}
-          </p>
-        </div>
-
-        <div className="cp-report-actions">
-          <button
-            type="button"
-            className="cp-button"
-            onClick={rerun}
-            disabled={rerunning || !syllabusId || !jobId}
-          >
-            <RefreshCw size={16} aria-hidden="true" />
-            {rerunning ? "Re-running…" : "Re-run analysis"}
-          </button>
-          <button
-            type="button"
-            className="cp-button cp-button-primary"
-            onClick={() => window.print()}
-          >
-            <Download size={16} aria-hidden="true" />
-            Export PDF
-          </button>
-        </div>
-      </header>
+      <div className="cp-report-head">
+        <PageHeader
+          eyebrow="Step 4 of 4 · Skill gap report"
+          title={jobTitle || "Selected job"}
+          description={`Compared with ${syllabusName || "the selected syllabus"}. Results are saved; re-run after changing the curriculum or job skills.`}
+          actions={
+            <>
+              <Button icon={RefreshCw} onClick={rerun} disabled={rerunning || !syllabusId || !jobId}>
+                {rerunning ? "Re-running…" : "Re-run analysis"}
+              </Button>
+              <Button variant="primary" icon={Download} onClick={() => window.print()}>
+                Export PDF
+              </Button>
+            </>
+          }
+        />
+      </div>
 
       {notice && (
         <p className="cp-report-notice" role="alert">

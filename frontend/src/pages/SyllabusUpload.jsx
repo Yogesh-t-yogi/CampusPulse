@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import api from "../apiClient";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { processSyllabus } from "../syllabusProcessing";
+import { Card, Page, PageHeader } from "../ui";
 
 function SyllabusUpload({ token, onUploaded }) {
   const inputRef = useRef(null);
@@ -157,16 +158,15 @@ function SyllabusUpload({ token, onUploaded }) {
   };
 
   return (
-    <div className="syllabus-upload-page">
-      <div className="upload-card">
-        <div className="upload-header">
-          <h2>Upload Syllabus</h2>
-          <p>
-            Upload your syllabus PDF to extract and organize subjects,
-            units, and topics using AI.
-          </p>
-        </div>
+    <Page>
+      <PageHeader
+        eyebrow="Step 1 of 4"
+        title="Upload syllabus"
+        description="Upload a syllabus PDF. CampusPulse extracts its subjects, units and topics with AI and indexes them for skill matching."
+      />
 
+      <div className="ui-grid ui-grid-main">
+      <div className="upload-card cp-upload-card">
         <form onSubmit={handleUpload}>
           <div
             className="upload-dropzone"
@@ -267,10 +267,20 @@ function SyllabusUpload({ token, onUploaded }) {
         </form>
 
         <p className="upload-note">
-          Your syllabus will be uploaded to your CampusPulse backend.
+          PDF up to 10 MB. Scanned pages are read with OCR.
         </p>
       </div>
-    </div>
+
+      <Card title="What happens next" description="Usually under a minute; long syllabi take longer.">
+        <ol className="ui-steps">
+          <li><span className="ui-step-dot">1</span>Text is read from the PDF (OCR for scans)</li>
+          <li><span className="ui-step-dot">2</span>AI extracts subjects, units and topics</li>
+          <li><span className="ui-step-dot">3</span>Topics are indexed for skill matching</li>
+          <li><span className="ui-step-dot">4</span>You review and edit the curriculum</li>
+        </ol>
+      </Card>
+      </div>
+    </Page>
   );
 }
 

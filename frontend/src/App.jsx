@@ -471,6 +471,7 @@ function App() {
           <Curriculum
             key={selectedSyllabusId}
             syllabusId={selectedSyllabusId}
+            onNext={() => setActivePage("Job Market")}
           />
         );
 

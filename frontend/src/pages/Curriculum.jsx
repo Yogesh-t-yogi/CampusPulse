@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from "react";
 import api from "../apiClient";
+import { ArrowRight, BookOpen, Check, Layers, ListChecks, Pencil } from "lucide-react";
+import { Button, PageHeader, StatCard } from "../ui";
 import {
   SubjectEditor,
   TopicEditor,
@@ -12,7 +14,7 @@ import {
   waitForProcessing,
 } from "../syllabusProcessing";
 
-function Curriculum({ syllabusId }) {
+function Curriculum({ syllabusId, onNext }) {
   const [syllabus, setSyllabus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -307,62 +309,36 @@ function Curriculum({ syllabusId }) {
 
   return (
     <main className="page-content cp-curriculum">
-      <section className="cc-hero">
-        <div>
-          <span className="cc-eyebrow">LEARNING CONTENT · CURRICULUM</span>
-          <h1>Curriculum Explorer</h1>
-          <p>
-            Explore your syllabus, navigate units, and discover
-            the topics covered by your academic curriculum.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Step 2 of 4 · Review curriculum"
+        title={syllabus.name || "Untitled syllabus"}
+        description="Check what the AI extracted. Fix names, add missing topics, or move topics between units before comparing with jobs."
+        actions={
+          <>
+            <Button
+              variant={editMode ? "primary" : "secondary"}
+              icon={editMode ? Check : Pencil}
+              onClick={() => setEditMode((value) => !value)}
+              aria-pressed={editMode}
+            >
+              {editMode ? "Done editing" : "Edit curriculum"}
+            </Button>
+            {onNext && (
+              <Button variant="primary" icon={ArrowRight} onClick={onNext} disabled={subjects.length === 0}>
+                Choose a job
+              </Button>
+            )}
+          </>
+        }
+      >
+        {syllabus.fileName && <p className="ui-muted" style={{ marginTop: 6 }}>{syllabus.fileName}</p>}
+      </PageHeader>
 
-        <div className="cc-hero-icon" aria-hidden="true">
-          <span>▤</span>
-        </div>
-      </section>
-
-      <section className="cc-syllabus-banner">
-        <div className="cc-document-icon" aria-hidden="true">
-          PDF
-        </div>
-
-        <div className="cc-syllabus-info">
-          <span className="cc-eyebrow">SELECTED SYLLABUS</span>
-          <h2>{syllabus.name || "Untitled syllabus"}</h2>
-          <p>{syllabus.fileName || "Curriculum document"}</p>
-        </div>
-
-        <span className="cc-ready-badge">
-          <span /> Available
-        </span>
-      </section>
-
-      <section className="cc-summary-grid">
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-purple">▤</span>
-          <div>
-            <span>Subjects</span>
-            <strong>{subjects.length}</strong>
-          </div>
-        </article>
-
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-blue">▦</span>
-          <div>
-            <span>Units</span>
-            <strong>{totalUnits}</strong>
-          </div>
-        </article>
-
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-green">✓</span>
-          <div>
-            <span>Topics</span>
-            <strong>{totalTopics}</strong>
-          </div>
-        </article>
-      </section>
+      <div className="ui-grid ui-grid-4">
+        <StatCard icon={BookOpen} label="Subjects" value={subjects.length} />
+        <StatCard icon={Layers} label="Units" value={totalUnits} tone="info" />
+        <StatCard icon={ListChecks} label="Topics" value={totalTopics} tone="success" />
+      </div>
 
       {subjects.length === 0 && (
         <section className="cc-empty" aria-live="polite">
@@ -432,14 +408,6 @@ function Curriculum({ syllabusId }) {
               onClick={collapseAll}
             >
               Collapse all
-            </button>
-            <button
-              type="button"
-              className={editMode ? "cp-button cp-button-primary" : "cp-button"}
-              onClick={() => setEditMode((value) => !value)}
-              aria-pressed={editMode}
-            >
-              {editMode ? "Done editing" : "Edit curriculum"}
             </button>
           </div>
         </div>

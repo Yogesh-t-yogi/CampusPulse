@@ -451,3 +451,7 @@
   background: var(--cp-gap-bg);
   color: var(--cp-gap-ink);
 }
+
+.cp-report-head { padding: 24px 32px 0; }
+.cp-report-head .ui-page-header-actions { flex-wrap: wrap; }
+@media print { .cp-report-head .ui-page-header-actions { display: none; } }

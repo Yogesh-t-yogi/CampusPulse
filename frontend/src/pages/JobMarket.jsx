@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "../ui";
 import api from "../apiClient";
 import {
   Bar,
@@ -17,22 +18,22 @@ const JOBS_PER_PAGE = 24;
 // (everyone), and catalog management (admins only).
 const SECTION_COPY = {
   choose: {
-    eyebrow: "STEP 3 · CHOOSE A JOB",
+    eyebrow: "Step 3 of 4",
     title: "Choose a job",
     text: "Pick a role from the catalog or paste a job description. Its skills are compared with your curriculum.",
   },
   insights: {
-    eyebrow: "MARKET INSIGHTS",
+    eyebrow: "Tools",
     title: "Market insights",
     text: "See which skills employers ask for most across the job catalog.",
   },
   resume: {
-    eyebrow: "STUDENT · RESUME MATCH",
+    eyebrow: "Tools · Students",
     title: "Resume match",
     text: "Upload your resume to see which catalog jobs fit your skills and what you still need to learn.",
   },
   catalog: {
-    eyebrow: "ADMIN · JOB CATALOG",
+    eyebrow: "Admin",
     title: "Job catalog",
     text: "Import job datasets and keep the shared catalog's skill lists up to date.",
   },
@@ -433,17 +434,11 @@ function JobMarket({
 
   return (
     <main className="page-content cp-jobs">
-      <section className="jm-hero">
-        <div>
-          <span className="jm-eyebrow">{SECTION_COPY[section].eyebrow}</span>
-          <h1>{SECTION_COPY[section].title}</h1>
-          <p>{SECTION_COPY[section].text}</p>
-        </div>
-
-        <div className="jm-hero-icon" aria-hidden="true">
-          <span>↗</span>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow={SECTION_COPY[section].eyebrow}
+        title={SECTION_COPY[section].title}
+        description={SECTION_COPY[section].text}
+      />
 
       {section === "choose" && (
       <section className="jm-custom-job">
