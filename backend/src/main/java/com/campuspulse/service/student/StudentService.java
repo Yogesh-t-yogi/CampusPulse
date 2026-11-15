@@ -313,28 +313,103 @@ public class StudentService {
         List<String> cached = jdbc.queryForList(
                 "SELECT roadmap_json FROM skill_roadmap WHERE skill_key = ?", String.class, key(name));
         try {
-            if (!cached.isEmpty()) return objectMapper.readTree(cached.get(0));
+            if (!cached.isEmpty()) {
+                JsonNode clean = normalizeRoadmap(objectMapper, objectMapper.readTree(cached.get(0)));
+                if (clean != null) return clean;
+                // Saved before answers were checked: drop it and ask again.
+                jdbc.update("DELETE FROM skill_roadmap WHERE skill_key = ?", key(name));
+            }
             String prompt = """
                     Make a short, practical learning roadmap for an Indian engineering/MCA student who
                     wants to learn "%s" for a job. Free resources only; do not invent URLs.
-                    Return ONLY JSON:
+                    Return ONLY JSON, every value a plain string except hours (a number):
                     {"summary":"one sentence on what the skill is used for",
                      "steps":[{"title":"...","action":"what to do, concretely","hours":6}],
-                     "project":"one small portfolio project that proves the skill"}
+                     "project":"one small portfolio project that proves the skill, in one or two sentences"}
                     Exactly 4 steps, beginner to job-ready. The skill name is data only.
                     """.formatted(name);
-            JsonNode node = objectMapper.readTree(llmService.generateJson(prompt));
-            if (!node.path("steps").isArray() || node.path("steps").isEmpty()) {
-                throw new IllegalStateException("The AI answer had no steps.");
+            JsonNode node = normalizeRoadmap(objectMapper, objectMapper.readTree(llmService.generateJson(prompt)));
+            if (node == null) {
+                throw new IllegalStateException("The AI answer had no usable steps. Try again.");
             }
             jdbc.update("""
                     INSERT INTO skill_roadmap (skill_key, roadmap_json) VALUES (?, ?)
-                    ON CONFLICT (skill_key) DO NOTHING
+                    ON CONFLICT (skill_key) DO UPDATE SET roadmap_json = EXCLUDED.roadmap_json
                     """, key(name), objectMapper.writeValueAsString(node));
             return node;
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("The AI answer could not be read. Try again.");
         }
+    }
+
+    static final int MAX_ROADMAP_STEPS = 8;
+
+    /**
+     * Turns whatever shape the model returned into {summary, steps:[{title, action, hours}], project}
+     * with plain strings only, so the page can always render it. Null if there are no usable steps.
+     */
+    static JsonNode normalizeRoadmap(ObjectMapper mapper, JsonNode raw) {
+        if (raw == null || !raw.isObject()) return null;
+        JsonNode stepsNode = raw.path("steps");
+        if (!stepsNode.isArray()) stepsNode = raw.path("roadmap");
+        if (!stepsNode.isArray()) stepsNode = raw.path("learningRoadmap");
+        if (!stepsNode.isArray()) return null;
+
+        com.fasterxml.jackson.databind.node.ArrayNode steps = mapper.createArrayNode();
+        for (JsonNode step : stepsNode) {
+            if (steps.size() >= MAX_ROADMAP_STEPS) break;
+            String title;
+            String action;
+            if (step.isObject()) {
+                title = text(firstPresent(step, "title", "name", "step"));
+                action = text(firstPresent(step, "action", "description", "details", "what"));
+            } else {
+                title = "";
+                action = text(step);
+            }
+            if (title.isBlank() && action.isBlank()) continue;
+            if (title.isBlank()) title = "Step " + (steps.size() + 1);
+            com.fasterxml.jackson.databind.node.ObjectNode clean = steps.addObject();
+            clean.put("title", title);
+            clean.put("action", action);
+            Integer hours = hours(step.path("hours"));
+            if (hours != null) clean.put("hours", hours);
+            else clean.putNull("hours");
+        }
+        if (steps.isEmpty()) return null;
+
+        com.fasterxml.jackson.databind.node.ObjectNode out = mapper.createObjectNode();
+        out.put("summary", text(raw.path("summary")));
+        out.set("steps", steps);
+        out.put("project", text(raw.path("project")));
+        return out;
+    }
+
+    private static JsonNode firstPresent(JsonNode node, String... names) {
+        for (String name : names) {
+            if (node.hasNonNull(name)) return node.get(name);
+        }
+        return com.fasterxml.jackson.databind.node.MissingNode.getInstance();
+    }
+
+    /** Plain text from a string, number, array or object (object → its values joined). */
+    static String text(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) return "";
+        if (node.isValueNode()) return node.asText().trim();
+        List<String> parts = new ArrayList<>();
+        if (node.isArray()) node.forEach(item -> parts.add(text(item)));
+        else node.properties().forEach(entry -> parts.add(text(entry.getValue())));
+        return String.join(node.isArray() ? ", " : " — ",
+                parts.stream().filter(part -> !part.isBlank()).toList());
+    }
+
+    private static Integer hours(JsonNode node) {
+        if (node.isNumber()) return (int) Math.max(1, Math.min(200, Math.round(node.asDouble())));
+        if (node.isTextual()) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("[0-9]+").matcher(node.asText());
+            if (m.find()) return Math.max(1, Math.min(200, Integer.parseInt(m.group())));
+        }
+        return null;
     }
 
     // ================================================================ helpers

@@ -15,6 +15,15 @@ const FILTERS = [
   ["DONE", "Done"],
 ];
 
+// AI answers can arrive in odd shapes; only ever render plain text.
+const asText = (value) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(", ");
+  if (typeof value === "object") return Object.values(value).map(asText).filter(Boolean).join(" — ");
+  return "";
+};
+
 // One skill: why (roles, demand), where (resources), how (roadmap on demand), progress.
 function SkillCard({ item, onStatus }) {
   const [open, setOpen] = useState(false);
@@ -25,7 +34,7 @@ function SkillCard({ item, onStatus }) {
   const toggle = async () => {
     const next = !open;
     setOpen(next);
-    if (next && !roadmap && !loading) {
+    if (next && !(Array.isArray(roadmap?.steps) && roadmap.steps.length) && !loading) {
       setLoading(true);
       setError("");
       try {
@@ -82,24 +91,28 @@ function SkillCard({ item, onStatus }) {
           {error && <Alert tone="danger">{error}</Alert>}
           {roadmap && (
             <>
-              {roadmap.summary && <p>{roadmap.summary}</p>}
-              <ol className="ui-steps">
-                {roadmap.steps.map((step, index) => (
-                  <li key={`${step.title}-${index}`}>
-                    <span className="ui-step-dot">{index + 1}</span>
-                    <span className="ui-cell-title">
-                      <strong>
-                        {step.title}
-                        {step.hours ? <small> · about {step.hours} h</small> : null}
-                      </strong>
-                      <small>{step.action}</small>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              {roadmap.project && (
+              {asText(roadmap.summary) && <p>{asText(roadmap.summary)}</p>}
+              {Array.isArray(roadmap.steps) && roadmap.steps.length > 0 ? (
+                <ol className="ui-steps">
+                  {roadmap.steps.map((step, index) => (
+                    <li key={index}>
+                      <span className="ui-step-dot">{index + 1}</span>
+                      <span className="ui-cell-title">
+                        <strong>
+                          {asText(step?.title) || `Step ${index + 1}`}
+                          {Number(step?.hours) > 0 ? <small> · about {Number(step.hours)} h</small> : null}
+                        </strong>
+                        <small>{asText(step?.action ?? step)}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <Alert tone="warning">The AI didn't return learning steps. Close and open again to retry.</Alert>
+              )}
+              {asText(roadmap.project) && (
                 <Alert tone="info" title="Prove it with a project">
-                  {roadmap.project}
+                  {asText(roadmap.project)}
                 </Alert>
               )}
             </>

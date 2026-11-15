@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import ErrorBoundary from "./components/ErrorBoundary";
 import api, { INSTITUTION_KEY, PASSWORD_CHANGE_EVENT, SESSION_EXPIRED_EVENT } from "./apiClient";
 import ChangePassword from "./pages/ChangePassword";
 
@@ -659,7 +660,7 @@ function App() {
         )}
 
         <div key={`${actingInstitutionId}-${pageVersion}`} className="shell-page">
-          {renderPage()}
+          <ErrorBoundary resetKey={location.pathname}>{renderPage()}</ErrorBoundary>
         </div>
       </div>
     </div>

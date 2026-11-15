@@ -73,6 +73,32 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
     }
   };
 
+  // Print the server PDF (reliable on paper); fall back to the browser's print of the page.
+  const printReport = async () => {
+    const tab = window.open("", "_blank");
+    setExporting("print");
+    setNotice("");
+    try {
+      const { data } = await api.get("/api/export/report/pdf", {
+        params: { syllabusId, jobId },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        window.open(url, "_blank");
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      tab?.close();
+      setNotice(errorMessage(error, "Couldn't prepare the PDF; using the browser's print instead."));
+      window.print();
+    } finally {
+      setExporting("");
+    }
+  };
+
   const pageProps = { syllabusId, jobId, token, embedded: true };
 
   return (
@@ -87,8 +113,8 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
               <Button icon={RefreshCw} onClick={rerun} disabled={rerunning || !syllabusId || !jobId}>
                 {rerunning ? "Re-running…" : "Re-run analysis"}
               </Button>
-              <Button icon={Printer} onClick={() => window.print()}>
-                Print
+              <Button icon={Printer} onClick={printReport} disabled={!!exporting || !syllabusId || !jobId}>
+                {exporting === "print" ? "Preparing…" : "Print"}
               </Button>
               <Button icon={FileSpreadsheet} onClick={() => download("excel")} disabled={!!exporting || !syllabusId || !jobId}>
                 {exporting === "excel" ? "Preparing…" : "Excel"}
