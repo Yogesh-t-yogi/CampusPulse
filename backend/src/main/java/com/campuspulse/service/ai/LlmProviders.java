@@ -19,6 +19,7 @@ public class LlmProviders {
 
     private final List<LlmProvider> ordered;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public LlmProviders(Environment env) {
         this(env.getProperty("llm.order", "llama,gemini,groq"), name -> new LlmProvider(
                 name,
