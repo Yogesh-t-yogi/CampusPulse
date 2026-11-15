@@ -34,8 +34,8 @@ public class SyllabusAiController {
     public ResponseEntity<Map<String, Object>> startProcessing(@PathVariable Long id) {
         Syllabus syllabus = syllabusService.requireManageable(id);
 
-        if (syllabus.getExtractedText() == null
-                || syllabus.getExtractedText().isBlank()) {
+        if ((syllabus.getExtractedText() == null || syllabus.getExtractedText().isBlank())
+                && !syllabusProcessingService.hasPagesToRead(id)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "No extracted syllabus text found.");
         }

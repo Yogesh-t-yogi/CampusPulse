@@ -31,12 +31,18 @@ public class SyllabusProcessingService {
     private final SyllabusAiService syllabusAiService;
     private final SyllabusPersistenceService syllabusPersistenceService;
     private final AnalysisResultService analysisResultService;
+    private final com.campuspulse.service.syllabus.SyllabusFileStore fileStore;
+    private final com.campuspulse.service.syllabus.ScannedPageReader pageReader;
 
     public SyllabusProcessingService(
             JdbcTemplate jdbcTemplate,
             SyllabusAiService syllabusAiService,
             SyllabusPersistenceService syllabusPersistenceService,
-            AnalysisResultService analysisResultService) {
+            AnalysisResultService analysisResultService,
+            com.campuspulse.service.syllabus.SyllabusFileStore fileStore,
+            com.campuspulse.service.syllabus.ScannedPageReader pageReader) {
+        this.fileStore = fileStore;
+        this.pageReader = pageReader;
         this.jdbcTemplate = jdbcTemplate;
         this.syllabusAiService = syllabusAiService;
         this.syllabusPersistenceService = syllabusPersistenceService;
@@ -56,9 +62,14 @@ public class SyllabusProcessingService {
         return updated == 1;
     }
 
+    public boolean hasPagesToRead(Long syllabusId) {
+        return fileStore.hasPending(syllabusId);
+    }
+
     @Async
     public void processInBackground(Long syllabusId, String extractedText) {
         try {
+            extractedText = readWaitingPages(syllabusId, extractedText);
             AiSyllabusResponse structure = syllabusAiService.structureSyllabus(extractedText);
             syllabusPersistenceService.saveAiStructure(syllabusId, structure);
             setStatus(syllabusId, PROCESSING, "Indexing topics for skill matching…");
@@ -82,6 +93,67 @@ public class SyllabusProcessingService {
         }
     }
 
+    /**
+     * Scanned pages saved at upload are read now (AI vision, then Tesseract if installed), merged with
+     * the text pages in page order and saved as the syllabus text. Returns the full text.
+     */
+    String readWaitingPages(Long syllabusId, String knownText) {
+        com.campuspulse.service.syllabus.SyllabusFileStore.StoredFile file = fileStore.pending(syllabusId);
+        if (file == null) return knownText;
+        List<Integer> pages = file.pendingPages();
+        setStatus(syllabusId, PROCESSING, "Reading " + pages.size() + " scanned page(s) with AI...");
+        List<com.campuspulse.service.syllabus.ScannedPageReader.PageResult> results;
+        try {
+            results = pageReader.read(file.bytes(), file.sha256(), pages, done ->
+                    setStatus(syllabusId, PROCESSING,
+                            "Reading scanned pages with AI: " + done + " of " + pages.size() + " done..."));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("The PDF could not be opened for reading.");
+        }
+        PageMerge merge = mergePages(file.pageTexts(), results);
+        fileStore.finish(syllabusId, merge.summary());
+        if (merge.text().isBlank()) {
+            throw new IllegalStateException("No page of this PDF could be read. Check the AI keys (vision model) "
+                    + "in .env, or upload a PDF with selectable text.");
+        }
+        jdbcTemplate.update("UPDATE syllabus SET extracted_text = ? WHERE id = ?", merge.text(), syllabusId);
+        setStatus(syllabusId, PROCESSING, "Extracting subjects, units and topics...");
+        return merge.text();
+    }
+
+    record PageMerge(String text, Map<String, Object> summary) {
+    }
+
+    /** AI text replaces a page's text layer; a page with neither is listed as unreadable. */
+    static PageMerge mergePages(List<String> pageTexts, List<com.campuspulse.service.syllabus.ScannedPageReader.PageResult> results) {
+        List<String> merged = new java.util.ArrayList<>(pageTexts);
+        Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        List<Integer> unreadable = new java.util.ArrayList<>();
+        java.util.Set<Integer> handled = new java.util.HashSet<>();
+        for (var r : results) {
+            handled.add(r.page());
+            String layer = merged.get(r.page() - 1);
+            boolean hasLayer = layer != null && !layer.isBlank();
+            if (!r.text().isBlank()) {
+                merged.set(r.page() - 1, r.text());
+                counts.merge(r.method(), 1, Integer::sum);
+            } else if (hasLayer) {
+                counts.merge("text", 1, Integer::sum);
+            } else {
+                unreadable.add(r.page());
+                counts.merge(r.method(), 1, Integer::sum);
+            }
+        }
+        int textPages = (int) java.util.stream.IntStream.rangeClosed(1, pageTexts.size())
+                .filter(page -> !handled.contains(page)).count();
+        if (textPages > 0) counts.merge("text", textPages, Integer::sum);
+        Map<String, Object> summary = new java.util.LinkedHashMap<>();
+        summary.put("pages", pageTexts.size());
+        summary.put("counts", counts);
+        summary.put("unreadablePages", unreadable);
+        return new PageMerge(com.campuspulse.service.syllabus.PdfTextExtractionService.joinPages(merged, List.of()), summary);
+    }
+
     public Map<String, Object> getStatus(Long syllabusId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
                 SELECT s.processing_status AS status,
@@ -102,11 +174,14 @@ public class SyllabusProcessingService {
             // Uploaded before this feature, or never processed.
             status = topicCount > 0 ? READY : "NOT_PROCESSED";
         }
-        return Map.of(
-                "syllabusId", syllabusId,
-                "status", status,
-                "message", row.get("message") == null ? "" : row.get("message"),
-                "topicCount", topicCount);
+        Map<String, Object> view = new java.util.HashMap<>();
+        view.put("syllabusId", syllabusId);
+        view.put("status", status);
+        view.put("message", row.get("message") == null ? "" : row.get("message"));
+        view.put("topicCount", topicCount);
+        Map<String, Object> pages = fileStore.summary(syllabusId);
+        if (pages != null) view.put("pages", pages);
+        return view;
     }
 
     // A restart stops background work; don't leave syllabi stuck in PROCESSING.

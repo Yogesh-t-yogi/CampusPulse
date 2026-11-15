@@ -27,15 +27,21 @@ public class SyllabusController {
     private final SyllabusService syllabusService;
     private final PdfTextExtractionService pdfTextExtractionService;
     private final CurrentUserService currentUserService;
+    private final com.campuspulse.service.syllabus.SyllabusFileStore fileStore;
+    private final com.campuspulse.service.syllabus.ScannedPageReader pageReader;
 
     public SyllabusController(
             SyllabusService syllabusService,
             PdfTextExtractionService pdfTextExtractionService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            com.campuspulse.service.syllabus.SyllabusFileStore fileStore,
+            com.campuspulse.service.syllabus.ScannedPageReader pageReader) {
 
         this.syllabusService = syllabusService;
         this.pdfTextExtractionService = pdfTextExtractionService;
         this.currentUserService = currentUserService;
+        this.fileStore = fileStore;
+        this.pageReader = pageReader;
     }
 
     // LIST THE CURRENT USER'S SYLLABI (summary: status, subject and topic counts)
@@ -104,15 +110,19 @@ public class SyllabusController {
         try {
             log.info("Syllabus upload started, size {} bytes", file.getSize());
 
-            // Step 1: Extract PDF text
-            String extractedText =
-                    pdfTextExtractionService.extractText(file);
-
-            if (extractedText == null || extractedText.isBlank()) {
-                return ResponseEntity.badRequest().body(
-                        Map.of("error", "No readable text was extracted from the PDF.")
-                );
+            // Step 1: text layer of every page; scanned/garbled pages are read later by AI.
+            PdfTextExtractionService.PdfAnalysis pdf = pdfTextExtractionService.analyse(file);
+            boolean needsReading = !pdf.pagesToRead().isEmpty();
+            if (needsReading && !pageReader.canRead()) {
+                if (pdf.knownText().isBlank()) {
+                    return ResponseEntity.badRequest().body(Map.of("error",
+                            "This PDF is scanned (no selectable text). Add LLAMA_API_KEY or GEMINI_API_KEY "
+                                    + "with a vision model to .env so AI can read it, then restart the backend."));
+                }
+                needsReading = false; // use the pages that have text; the rest are skipped
             }
+            String extractedText = needsReading ? pdf.knownText()
+                    : PdfTextExtractionService.joinPages(pdf.pageTexts(), List.of());
 
             // Step 2: Create syllabus entity
             String originalFileName = file.getOriginalFilename();
@@ -148,25 +158,28 @@ public class SyllabusController {
                 syllabus.setVersionNo((previous.getVersionNo() == null ? 1 : previous.getVersionNo()) + 1);
             }
 
-            // Step 3: Save syllabus
+            // Step 3: Save syllabus (and the PDF itself while pages wait for AI reading)
             Syllabus savedSyllabus =
                     syllabusService.createSyllabus(syllabus);
+            if (needsReading) {
+                fileStore.save(savedSyllabus.getId(), pdf);
+            }
 
-            log.info("Syllabus {} saved, {} characters extracted",
-                    savedSyllabus.getId(),
-                    savedSyllabus.getExtractedText().length());
+            int textLength = savedSyllabus.getExtractedText() == null ? 0 : savedSyllabus.getExtractedText().length();
+            log.info("Syllabus {} saved: {} pages, {} characters, {} pages for AI reading",
+                    savedSyllabus.getId(), pdf.pageCount(), textLength, needsReading ? pdf.pagesToRead().size() : 0);
 
-            return ResponseEntity.ok(
-                    Map.of(
-                            "id", savedSyllabus.getId(),
-                            "name", savedSyllabus.getName(),
-                            "fileName", savedSyllabus.getFileName() == null
-                                    ? ""
-                                    : savedSyllabus.getFileName(),
-                            "message", "PDF uploaded and text extracted successfully",
-                            "textLength", savedSyllabus.getExtractedText().length()
-                    )
-            );
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("id", savedSyllabus.getId());
+            body.put("name", savedSyllabus.getName());
+            body.put("fileName", savedSyllabus.getFileName() == null ? "" : savedSyllabus.getFileName());
+            body.put("pageCount", pdf.pageCount());
+            body.put("pagesForAi", needsReading ? pdf.pagesToRead().size() : 0);
+            body.put("textLength", textLength);
+            body.put("message", needsReading
+                    ? pdf.pagesToRead().size() + " of " + pdf.pageCount() + " pages are scanned; AI will read them during processing."
+                    : "PDF uploaded and text extracted successfully");
+            return ResponseEntity.ok(body            );
 
         } catch (IllegalArgumentException e) {
             log.warn("Syllabus upload rejected: {}", e.getMessage());

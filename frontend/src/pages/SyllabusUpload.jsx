@@ -6,6 +6,17 @@ import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { processSyllabus } from "../syllabusProcessing";
 import { Alert, Button, Card, Field, Page, PageHeader } from "../ui";
 
+// "12 pages: 9 with text, 3 read by AI · page 7 unreadable"
+function describePages(pages) {
+  if (!pages?.counts) return "";
+  const labels = { text: "with text", ai: "read by AI", ocr: "read by OCR", failed: "unreadable", skipped: "skipped (page limit)" };
+  const parts = Object.entries(pages.counts)
+    .filter(([, n]) => n > 0)
+    .map(([key, n]) => `${n} ${labels[key] || key}`);
+  const missing = pages.unreadablePages?.length ? ` · could not read page ${pages.unreadablePages.join(", ")}` : "";
+  return `${pages.pages} pages: ${parts.join(", ")}${missing}`;
+}
+
 function SyllabusUpload({ token, onUploaded, currentUser }) {
   const isStudent = currentUser?.role === "STUDENT";
   // ?revisionOf=<id>: this upload is a new version of that syllabus (keeps its name, program, semester).
@@ -57,6 +68,7 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pagesNote, setPagesNote] = useState("");
 
   // Select a PDF file
   const handleFileChange = (event) => {
@@ -101,6 +113,7 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
 
     setLoading(true);
     setError("");
+    setPagesNote("");
     setMessage("");
 
     try {
@@ -141,7 +154,13 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
 
       // STEP 3: Process the saved syllabus using AI. It runs in the
       // background; we poll its status and show each stage.
-      setMessage("PDF uploaded. Processing syllabus content...");
+      const scanned = Number(uploadResponse.data?.pagesForAi || 0);
+      setPagesNote(scanned > 0 ? uploadResponse.data.message : "");
+      setMessage(
+        scanned > 0
+          ? `PDF uploaded. AI is reading ${scanned} scanned page(s) first; this can take a few minutes.`
+          : "PDF uploaded. Processing syllabus content..."
+      );
 
       const finalStatus = await processSyllabus(
         uploadedSyllabusId,
@@ -149,6 +168,7 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
         (status) => status.message && setMessage(status.message)
       );
 
+      if (finalStatus.pages) setPagesNote(describePages(finalStatus.pages));
       const hasWarnings = finalStatus.status === "READY_WITH_WARNINGS";
       const processingResult = {
         embeddingFailures: hasWarnings ? 1 : 0,
@@ -338,6 +358,10 @@ function SyllabusUpload({ token, onUploaded, currentUser }) {
               <AlertCircle size={18} />
               <span>{error}</span>
             </div>
+          )}
+
+          {pagesNote && (
+            <Alert tone={pagesNote.includes("could not read") ? "warning" : "info"}>{pagesNote}</Alert>
           )}
 
           {message && (
