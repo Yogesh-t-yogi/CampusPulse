@@ -2,184 +2,110 @@ package com.campuspulse.service.syllabus;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.rendering.PDFRenderer;
-import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.text.PDFTextStripper;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Locale;
 
+/**
+ * Reads the text layer of every page (fast, free) and decides which pages need an AI vision model
+ * (plan 14, Phase C): empty or garbled pages in "auto" mode, every page in "always" mode.
+ */
 @Service
 public class PdfTextExtractionService {
 
-    public String extractText(MultipartFile file) throws IOException {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PdfTextExtractionService.class);
 
+    /** Fewer visible characters than this on a page = probably a scanned image. */
+    static final int MIN_PAGE_CHARS = 80;
+
+    /** The PDF, its page texts and which pages (1-based) still need reading. */
+    public record PdfAnalysis(byte[] bytes, String sha256, List<String> pageTexts, List<Integer> pagesToRead) {
+        public int pageCount() {
+            return pageTexts.size();
+        }
+
+        /** Text of the pages that don't need reading, in page order. */
+        public String knownText() {
+            return joinPages(pageTexts, pagesToRead);
+        }
+    }
+
+    private final String mode;
+
+    public PdfTextExtractionService(@Value("${app.pdf.ai-mode:auto}") String mode) {
+        this.mode = mode == null ? "auto" : mode.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public PdfAnalysis analyse(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "PDF file is empty"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF file is empty");
         }
-
         String fileName = file.getOriginalFilename();
-
-        if (fileName == null ||
-                !fileName.toLowerCase().endsWith(".pdf")) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Only PDF files are allowed"
-            );
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF files are allowed");
         }
-
-        try (PDDocument document = Loader.loadPDF(file.getBytes())) {
-
-            if (document.getNumberOfPages() == 0) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "The PDF contains no pages"
-                );
+        byte[] bytes = file.getBytes();
+        try (PDDocument document = Loader.loadPDF(bytes)) {
+            int pages = document.getNumberOfPages();
+            if (pages == 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The PDF contains no pages");
             }
-
-            // First, extract selectable PDF text.
             PDFTextStripper stripper = new PDFTextStripper();
-            String extractedText = stripper.getText(document);
-
-            if (extractedText != null &&
-                    !extractedText.isBlank()) {
-
-                System.out.println(
-                        "PDF text extraction completed. Characters: "
-                                + extractedText.length()
-                );
-
-                return extractedText.trim();
+            List<String> texts = new ArrayList<>();
+            List<Integer> toRead = new ArrayList<>();
+            for (int page = 1; page <= pages; page++) {
+                stripper.setStartPage(page);
+                stripper.setEndPage(page);
+                String text = stripper.getText(document).trim();
+                texts.add(text);
+                if ("always".equals(mode) || needsReading(text)) toRead.add(page);
             }
+            log.info("PDF analysed: {} pages, {} need reading (mode {})", pages, toRead.size(), mode);
+            return new PdfAnalysis(bytes, sha256(bytes), texts, toRead);
+        }
+    }
 
-            // No selectable text: use the installed Tesseract CLI.
-            String tessdataPath = System.getenv().getOrDefault(
-                    "TESSDATA_PREFIX",
-                    "C:/Program Files/Tesseract-OCR/tessdata"
-            );
+    /** True if the page's text layer is (nearly) empty or mostly unreadable symbols. */
+    static boolean needsReading(String text) {
+        if (text == null) return true;
+        String visible = text.replaceAll("\\s+", "");
+        if (visible.length() < MIN_PAGE_CHARS) return true;
+        long readable = visible.chars()
+                .filter(c -> Character.isLetterOrDigit(c) || ".,;:()-/&'\"%+#*[]".indexOf(c) >= 0)
+                .count();
+        long broken = visible.chars().filter(c -> c == '�' || Character.isISOControl(c)).count();
+        return readable < visible.length() * 0.7 || broken > visible.length() * 0.05;
+    }
 
-            String tesseractCommand = System.getenv().getOrDefault(
-                    "TESSERACT_CMD",
-                    "tesseract"
-            );
+    /** Page texts in order, leaving out the given pages (1-based); pages separated by blank lines. */
+    public static String joinPages(List<String> pageTexts, List<Integer> skip) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < pageTexts.size(); i++) {
+            if (skip.contains(i + 1)) continue;
+            String text = pageTexts.get(i);
+            if (text == null || text.isBlank()) continue;
+            if (!out.isEmpty()) out.append("\n\n");
+            out.append(text.trim());
+        }
+        return out.toString();
+    }
 
-            PDFRenderer renderer = new PDFRenderer(document);
-            StringBuilder result = new StringBuilder();
-
-            for (int page = 0;
-                    page < document.getNumberOfPages();
-                    page++) {
-
-                Path imageFile = Files.createTempFile(
-                        "campuspulse-page-", ".png"
-                );
-
-                try {
-                    BufferedImage image = renderer.renderImageWithDPI(
-                            page, 300, ImageType.RGB
-                    );
-
-                    try {
-                        if (!javax.imageio.ImageIO.write(
-                                image, "png", imageFile.toFile())) {
-                            throw new IOException(
-                                    "Could not create OCR image for page "
-                                            + (page + 1)
-                            );
-                        }
-                    } finally {
-                        image.flush();
-                    }
-
-                    ProcessBuilder processBuilder = new ProcessBuilder(
-                            tesseractCommand,
-                            imageFile.toAbsolutePath().toString(),
-                            "stdout",
-                            "-l", "eng",
-                            "--tessdata-dir", tessdataPath
-                    );
-
-                    processBuilder.redirectErrorStream(true);
-
-                    Process process = processBuilder.start();
-
-                    StringBuilder output = new StringBuilder();
-
-                    try (BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(
-                                    process.getInputStream(),
-                                    StandardCharsets.UTF_8))) {
-
-                        String line;
-
-                        while ((line = reader.readLine()) != null) {
-                            output.append(line)
-                                    .append(System.lineSeparator());
-                        }
-                    }
-
-                    int exitCode;
-
-                    try {
-                        exitCode = process.waitFor();
-                    } catch (InterruptedException e) {
-                        process.destroyForcibly();
-                        Thread.currentThread().interrupt();
-
-                        throw new IOException(
-                                "OCR was interrupted on page "
-                                        + (page + 1),
-                                e
-                        );
-                    }
-
-                    if (exitCode != 0) {
-                        throw new IOException(
-                                "Tesseract failed on page "
-                                        + (page + 1)
-                                        + ": " + output
-                        );
-                    }
-
-                    result.append(output);
-
-                    System.out.println(
-                            "OCR completed for page " + (page + 1)
-                    );
-
-                } finally {
-                    Files.deleteIfExists(imageFile);
-                }
-            }
-
-            String ocrText = result.toString().trim();
-
-            if (ocrText.isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "OCR could not recognize text in this PDF."
-                );
-            }
-
-            System.out.println(
-                    "OCR completed. Extracted characters: "
-                            + ocrText.length()
-            );
-
-            return ocrText;
+    static String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 }

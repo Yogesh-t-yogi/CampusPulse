@@ -1,9 +1,21 @@
 
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from "../api";
+import api from "../apiClient";
+import { ArrowRight, BookOpen, Check, Layers, ListChecks, Pencil } from "lucide-react";
+import { Button, PageHeader, StatCard } from "../ui";
+import CourseOutcomes from "../components/CourseOutcomes";
+import {
+  SubjectEditor,
+  TopicEditor,
+  UnitEditor,
+} from "../components/CurriculumEditors";
+import {
+  getProcessingStatus,
+  processSyllabus as runProcessing,
+  waitForProcessing,
+} from "../syllabusProcessing";
 
-function Curriculum({ syllabusId }) {
+function Curriculum({ syllabusId, onNext, canManage = true }) {
   const [syllabus, setSyllabus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -13,6 +25,8 @@ function Curriculum({ syllabusId }) {
   const [processing, setProcessing] = useState(false);
   const [processingError, setProcessingError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [editMode, setEditMode] = useState(false);
+  const reload = () => setReloadVersion((version) => version + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,8 +56,8 @@ function Curriculum({ syllabusId }) {
       setLoading(true);
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/syllabus/${syllabusId}/full`,
+        const response = await api.get(
+          `/api/syllabus/${syllabusId}/full`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -53,6 +67,26 @@ function Curriculum({ syllabusId }) {
 
         if (cancelled) return;
         setSyllabus(response.data);
+
+        // If processing is still running, wait for it and then reload.
+        const status = await getProcessingStatus(syllabusId, token).catch(
+          () => ({})
+        );
+        if (!cancelled && status.status === "PROCESSING") {
+          setProcessing(true);
+          waitForProcessing(syllabusId, token)
+            .catch((waitError) => {
+              if (!cancelled) setProcessingError(waitError.message);
+            })
+            .finally(() => {
+              if (!cancelled) {
+                setProcessing(false);
+                setReloadVersion((version) => version + 1);
+              }
+            });
+        } else if (!cancelled && status.status === "FAILED" && status.message) {
+          setProcessingError(status.message);
+        }
       } catch (err) {
         if (cancelled) return;
 
@@ -95,21 +129,8 @@ function Curriculum({ syllabusId }) {
     setProcessing(true);
     setProcessingError("");
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/ai/syllabus/${syllabusId}/save`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data?.curriculumSaved) {
-        throw new Error(
-          response.data?.error || "The server did not save curriculum content."
-        );
-      }
+      // Runs in the background on the server; wait until it finishes.
+      await runProcessing(syllabusId, token);
 
       setReloadVersion((version) => version + 1);
     } catch (err) {
@@ -150,6 +171,14 @@ function Curriculum({ syllabusId }) {
         0
       ),
     0
+  );
+
+  // Every unit of the syllabus, for "Move to unit" in the topic editor.
+  const allUnits = subjects.flatMap((subject) =>
+    (subject.units || []).map((unit, index) => ({
+      id: unit.id,
+      label: `${subject.name} · Unit ${unit.unitNumber ?? index + 1}${unit.name ? ` — ${unit.name}` : ""}`,
+    }))
   );
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -270,7 +299,7 @@ function Curriculum({ syllabusId }) {
           <p>{error || "Curriculum data is unavailable."}</p>
           <button
             className="cc-button cc-button-primary"
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadVersion((version) => version + 1)}
           >
             Try again
           </button>
@@ -281,62 +310,38 @@ function Curriculum({ syllabusId }) {
 
   return (
     <main className="page-content cp-curriculum">
-      <section className="cc-hero">
-        <div>
-          <span className="cc-eyebrow">LEARNING CONTENT · CURRICULUM</span>
-          <h1>Curriculum Explorer</h1>
-          <p>
-            Explore your syllabus, navigate units, and discover
-            the topics covered by your academic curriculum.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Step 2 of 4 · Review curriculum"
+        title={syllabus.name || "Untitled syllabus"}
+        description="Check what the AI extracted. Fix names, add missing topics, or move topics between units before comparing with jobs."
+        actions={
+          <>
+            {canManage && (
+            <Button
+              variant={editMode ? "primary" : "secondary"}
+              icon={editMode ? Check : Pencil}
+              onClick={() => setEditMode((value) => !value)}
+              aria-pressed={editMode}
+            >
+              {editMode ? "Done editing" : "Edit curriculum"}
+            </Button>
+            )}
+            {onNext && (
+              <Button variant="primary" icon={ArrowRight} onClick={onNext} disabled={subjects.length === 0}>
+                Choose a job
+              </Button>
+            )}
+          </>
+        }
+      >
+        {syllabus.fileName && <p className="ui-muted" style={{ marginTop: 6 }}>{syllabus.fileName}</p>}
+      </PageHeader>
 
-        <div className="cc-hero-icon" aria-hidden="true">
-          <span>▤</span>
-        </div>
-      </section>
-
-      <section className="cc-syllabus-banner">
-        <div className="cc-document-icon" aria-hidden="true">
-          PDF
-        </div>
-
-        <div className="cc-syllabus-info">
-          <span className="cc-eyebrow">SELECTED SYLLABUS</span>
-          <h2>{syllabus.name || "Untitled syllabus"}</h2>
-          <p>{syllabus.fileName || "Curriculum document"}</p>
-        </div>
-
-        <span className="cc-ready-badge">
-          <span /> Available
-        </span>
-      </section>
-
-      <section className="cc-summary-grid">
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-purple">▤</span>
-          <div>
-            <span>Subjects</span>
-            <strong>{subjects.length}</strong>
-          </div>
-        </article>
-
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-blue">▦</span>
-          <div>
-            <span>Units</span>
-            <strong>{totalUnits}</strong>
-          </div>
-        </article>
-
-        <article className="cc-summary-card">
-          <span className="cc-summary-icon cc-green">✓</span>
-          <div>
-            <span>Topics</span>
-            <strong>{totalTopics}</strong>
-          </div>
-        </article>
-      </section>
+      <div className="ui-grid ui-grid-4">
+        <StatCard icon={BookOpen} label="Subjects" value={subjects.length} />
+        <StatCard icon={Layers} label="Units" value={totalUnits} tone="info" />
+        <StatCard icon={ListChecks} label="Topics" value={totalTopics} tone="success" />
+      </div>
 
       {subjects.length === 0 && (
         <section className="cc-empty" aria-live="polite">
@@ -450,6 +455,14 @@ function Curriculum({ syllabusId }) {
                     </span>
                   </button>
 
+                  {editMode && (
+                    <SubjectEditor
+                      syllabusId={syllabusId}
+                      subject={subject}
+                      onChanged={reload}
+                    />
+                  )}
+
                   {subjectOpen && (
                     <div className="cc-unit-list">
                       {(subject.units || []).map((unit, unitIndex) => {
@@ -482,6 +495,14 @@ function Curriculum({ syllabusId }) {
                               </span>
                             </button>
 
+                            {editMode && (
+                              <UnitEditor
+                                syllabusId={syllabusId}
+                                unit={unit}
+                                onChanged={reload}
+                              />
+                            )}
+
                             {unitOpen && (
                               <div className="cc-topic-list">
                                 {(unit.topics || []).length === 0 ? (
@@ -500,6 +521,16 @@ function Curriculum({ syllabusId }) {
                                         {topic.description && (
                                           <p>{topic.description}</p>
                                         )}
+                                        {editMode && (
+                                          <TopicEditor
+                                            syllabusId={syllabusId}
+                                            topic={topic}
+                                            units={allUnits.filter(
+                                              (item) => item.id !== unit.id
+                                            )}
+                                            onChanged={reload}
+                                          />
+                                        )}
                                       </div>
                                     </div>
                                   ))
@@ -517,6 +548,12 @@ function Curriculum({ syllabusId }) {
           </div>
         )}
       </section>
+
+      {subjects.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <CourseOutcomes syllabusId={syllabusId} canManage={canManage} />
+        </div>
+      )}
 
       <footer className="cc-footer">
         CampusPulse · Curriculum intelligence

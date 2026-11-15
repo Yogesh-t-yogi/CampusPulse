@@ -1,0 +1,95 @@
+/* CampusPulse v2 theme tokens (approved palette, _claude/plans/06-theme-palette.md).
+   Use these variables instead of hex values.
+   <html data-theme="light|dark"> picks light/dark (default: follows the system).
+   <html data-mode="faculty|student"> picks the accent colour. */
+
+:root {
+  --cp-font: "Inter", "Segoe UI", system-ui, sans-serif;
+  --cp-radius: 8px;
+  --cp-radius-card: 12px;
+  --cp-shadow-menu: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* Neutrals */
+  --cp-page: #f8fafc;
+  --cp-card: #ffffff;
+  --cp-border: #e2e8f0;
+  --cp-text: #0f172a;
+  --cp-text-2: #334155;
+  --cp-text-muted: #64748b;
+  --cp-sidebar: #0f172a;
+  --cp-sidebar-text: #f8fafc;
+
+  /* Faculty accent (default) */
+  --cp-accent: #4f46e5;
+  --cp-accent-strong: #4338ca;
+  --cp-accent-soft: #a5b4fc;
+  --cp-accent-tint: #eef2ff;
+  --cp-accent-ink: #312e81;
+  --cp-on-accent: #ffffff;
+
+  /* Skill status — same in both modes */
+  --cp-matched: #16a34a;
+  --cp-matched-bg: #dcfce7;
+  --cp-matched-ink: #166534;
+  --cp-partial: #d97706;
+  --cp-partial-bg: #fef3c7;
+  --cp-partial-ink: #92400e;
+  --cp-gap: #dc2626;
+  --cp-gap-bg: #fee2e2;
+  --cp-gap-ink: #991b1b;
+  --cp-info: #0284c7;
+  --cp-info-bg: #e0f2fe;
+  --cp-info-ink: #075985;
+
+  color-scheme: light;
+}
+
+:root[data-mode="student"] {
+  --cp-accent: #0d9488;
+  --cp-accent-strong: #0f766e;
+  --cp-accent-soft: #5eead4;
+  --cp-accent-tint: #ccfbf1;
+  --cp-accent-ink: #115e59;
+}
+
+/* Dark: explicit choice, or system preference when no choice was made */
+:root[data-theme="dark"] {
+  --cp-page: #0f172a;
+  --cp-card: #1e293b;
+  --cp-border: #334155;
+  --cp-text: #f1f5f9;
+  --cp-text-2: #cbd5e1;
+  --cp-text-muted: #94a3b8;
+  --cp-sidebar: #020617;
+  --cp-shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --cp-accent: #818cf8;
+  --cp-accent-strong: #a5b4fc;
+  --cp-accent-soft: #4f46e5;
+  --cp-accent-tint: #1e1b4b;
+  --cp-accent-ink: #c7d2fe;
+  --cp-on-accent: #0f172a;
+
+  --cp-matched: #4ade80;
+  --cp-matched-bg: #14532d;
+  --cp-matched-ink: #bbf7d0;
+  --cp-partial: #fbbf24;
+  --cp-partial-bg: #78350f;
+  --cp-partial-ink: #fde68a;
+  --cp-gap: #f87171;
+  --cp-gap-bg: #7f1d1d;
+  --cp-gap-ink: #fecaca;
+  --cp-info: #38bdf8;
+  --cp-info-bg: #0c4a6e;
+  --cp-info-ink: #bae6fd;
+
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"][data-mode="student"] {
+  --cp-accent: #2dd4bf;
+  --cp-accent-strong: #5eead4;
+  --cp-accent-soft: #0d9488;
+  --cp-accent-tint: #134e4a;
+  --cp-accent-ink: #99f6e4;
+}

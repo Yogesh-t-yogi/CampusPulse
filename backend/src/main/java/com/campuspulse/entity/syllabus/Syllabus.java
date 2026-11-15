@@ -39,12 +39,59 @@ public class Syllabus {
     )
     private LocalDateTime createdAt;
 
+    // PROCESSING, READY, READY_WITH_WARNINGS, FAILED (null = uploaded, not processed yet)
+    @Column(name = "processing_status", length = 30)
+    private String processingStatus;
+
+    @Column(name = "processing_message", columnDefinition = "TEXT")
+    private String processingMessage;
+
+    @Column(name = "institution_id")
+    private Long institutionId;
+
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    @Column(name = "program_id")
+    private Long programId;
+
+    @Column(name = "previous_version_id")
+    private Long previousVersionId;
+
+    @Column(name = "version_no", nullable = false)
+    private Integer versionNo = 1;
+
+    public Long getPreviousVersionId() { return previousVersionId; }
+    public void setPreviousVersionId(Long previousVersionId) { this.previousVersionId = previousVersionId; }
+    public Integer getVersionNo() { return versionNo; }
+    public void setVersionNo(Integer versionNo) { this.versionNo = versionNo; }
+
+    @Column(name = "semester")
+    private Integer semester;
+
+    // PRIVATE or DEPARTMENT (see SyllabusAccess)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private String visibility = "PRIVATE";
+
+
     @OneToMany(
         mappedBy = "syllabus",
         cascade = CascadeType.ALL,
         orphanRemoval = true
     )
     private List<Subject> subjects = new ArrayList<>();
+
+    public Long getInstitutionId() { return institutionId; }
+    public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public Long getProgramId() { return programId; }
+    public void setProgramId(Long programId) { this.programId = programId; }
+    public Integer getSemester() { return semester; }
+    public void setSemester(Integer semester) { this.semester = semester; }
+
+    public String getVisibility() { return visibility; }
+    public void setVisibility(String visibility) { this.visibility = visibility; }
 
     public Syllabus() {
     }
@@ -54,6 +101,14 @@ public class Syllabus {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+    }
+
+    public String getProcessingStatus() {
+        return processingStatus;
+    }
+
+    public String getProcessingMessage() {
+        return processingMessage;
     }
 
     public Long getId() {

@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
-public class JobCatalogProvider implements JobSearchProvider {
+public class JobCatalogProvider {
 
     private static final long MAX_CSV_BYTES = 10 * 1024 * 1024;
     private static final int MAX_IMPORT_ROWS = 10_000;
@@ -57,17 +57,26 @@ public class JobCatalogProvider implements JobSearchProvider {
         }
     }
 
-    @Override
     public List<JobPosting> searchJobs(
             String keyword,
             String location,
             int limit) {
+        return searchJobs(keyword, location, limit, null);
+    }
+
+    public List<JobPosting> searchJobs(
+            String keyword,
+            String location,
+            int limit,
+            Long institutionId) {
         String normalizedKeyword = normalizeSearch(keyword);
         String normalizedLocation = normalizeSearch(location);
 
         return jobPostingRepository
                 .findBySourceOrderByCreatedAtDesc("DATASET")
                 .stream()
+                .filter(job -> job.getInstitutionId() == null
+                        || job.getInstitutionId().equals(institutionId))
                 .filter(job -> {
                     if (normalizedKeyword.isBlank()) {
                         return true;
@@ -86,8 +95,23 @@ public class JobCatalogProvider implements JobSearchProvider {
                 .toList();
     }
 
+    /** Rows added, and rows skipped because the same title + company is already in that catalog. */
+    public record ImportResult(int imported, int skipped) {
+    }
+
+    private boolean catalogHasJob(String title, String company, Long institutionId) {
+        return institutionId == null
+                ? jobPostingRepository.existsByOwnerIsNullAndInstitutionIdIsNullAndTitleIgnoreCaseAndCompanyIgnoreCase(title.trim(), company)
+                : jobPostingRepository.existsByOwnerIsNullAndInstitutionIdAndTitleIgnoreCaseAndCompanyIgnoreCase(institutionId, title.trim(), company);
+    }
+
     @Transactional
-    public int importCsv(MultipartFile file) throws IOException {
+    public ImportResult importCsv(MultipartFile file) throws IOException {
+        return importCsv(file, null);
+    }
+
+    @Transactional
+    public ImportResult importCsv(MultipartFile file, Long institutionId) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException(
                     "CSV file is required for import."
@@ -105,6 +129,8 @@ public class JobCatalogProvider implements JobSearchProvider {
         }
 
         int imported = 0;
+        int skipped = 0;
+        java.util.Set<String> seenInFile = new java.util.HashSet<>();
         try (PushbackReader reader = new PushbackReader(
                 new BufferedReader(new InputStreamReader(
                         file.getInputStream(), StandardCharsets.UTF_8)), 1)) {
@@ -156,15 +182,22 @@ public class JobCatalogProvider implements JobSearchProvider {
                         row.get("skills"), row.get("required_skills"),
                         row.get("skill_set"), "");
 
+                // Re-importing the same file must not duplicate jobs.
+                String key = (title + "|" + company).toLowerCase(Locale.ROOT).trim();
+                if (!seenInFile.add(key) || catalogHasJob(title, company, institutionId)) {
+                    skipped++;
+                    continue;
+                }
                 createCatalogJob(
                         title, company, location, description,
-                        parseSkills(rawSkills)
+                        parseSkills(rawSkills),
+                        institutionId
                 );
                 imported++;
             }
         }
 
-        return imported;
+        return new ImportResult(imported, skipped);
     }
 
     @Transactional
@@ -174,6 +207,18 @@ public class JobCatalogProvider implements JobSearchProvider {
             String location,
             String description,
             List<String> skills) {
+        return createCatalogJob(title, company, location, description, skills, null);
+    }
+
+    /** institutionId null = global catalog; set = that college's catalog. */
+    @Transactional
+    public JobPosting createCatalogJob(
+            String title,
+            String company,
+            String location,
+            String description,
+            List<String> skills,
+            Long institutionId) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Job title is required.");
         }
@@ -186,6 +231,7 @@ public class JobCatalogProvider implements JobSearchProvider {
         job.setSource("DATASET");
         job.setJobUrl(null);
         job.setOwner(null);
+        job.setInstitutionId(institutionId);
 
         JobPosting savedJob = jobPostingRepository.save(job);
         List<String> normalizedSkills = skills == null ? List.of() : skills.stream()
@@ -208,9 +254,9 @@ public class JobCatalogProvider implements JobSearchProvider {
         return savedJob;
     }
 
-    public List<Map<String, Object>> getSkillDemand() {
+    public List<Map<String, Object>> getSkillDemand(Long institutionId) {
         Map<String, Long> counts = new HashMap<>();
-        for (Object[] row : jobRequiredSkillRepository.findDatasetSkillDemand()) {
+        for (Object[] row : jobRequiredSkillRepository.findDatasetSkillDemand(institutionId)) {
             if (row.length < 2 || row[0] == null || !(row[1] instanceof Number count)) {
                 continue;
             }
@@ -331,7 +377,8 @@ public class JobCatalogProvider implements JobSearchProvider {
         return null;
     }
 
-    private List<StarterJob> starterJobs() {
+    /** Built-in catalog (20 roles), added at start-up when a title is missing. */
+    List<StarterJob> starterJobs() {
         return List.of(
                 new StarterJob("Java Developer", "CampusPulse Labs", "Bengaluru",
                         "Develop enterprise Java services with Spring Boot, REST APIs, and PostgreSQL integrations.",
@@ -356,11 +403,47 @@ public class JobCatalogProvider implements JobSearchProvider {
                         List.of("HTML", "CSS", "JavaScript", "React", "UI/UX")),
                 new StarterJob("Data Engineer", "StreamWorks", "Bengaluru",
                         "Design scalable data pipelines, integration flows, and warehouse models to power analytics.",
-                        List.of("Python", "SQL", "ETL", "Spark", "PostgreSQL"))
+                        List.of("Python", "SQL", "ETL", "Spark", "PostgreSQL")),
+                new StarterJob("Machine Learning Engineer", "ModelWorks AI", "Bengaluru",
+                        "Build, train and deploy machine learning models, from data preparation and feature engineering to monitoring in production.",
+                        List.of("Python", "Machine Learning", "Scikit-learn", "TensorFlow", "PyTorch", "Pandas", "SQL", "MLOps")),
+                new StarterJob("Generative AI Engineer", "PromptLabs", "Hyderabad",
+                        "Build LLM-powered features: retrieval-augmented generation, prompt design, evaluation and API services around language models.",
+                        List.of("Python", "Large Language Models", "Prompt Engineering", "LangChain", "RAG", "Vector Database", "FastAPI", "Docker")),
+                new StarterJob("Android Developer", "AppNest", "Pune",
+                        "Develop and publish Android apps with modern UI, offline storage and REST API integration.",
+                        List.of("Kotlin", "Java", "Android SDK", "Jetpack Compose", "REST API", "SQLite", "Firebase", "Git")),
+                new StarterJob(".NET Developer", "CoreStack Solutions", "Chennai",
+                        "Build web APIs and business applications on .NET with SQL Server and cloud deployment.",
+                        List.of("C#", ".NET", "ASP.NET Core", "Entity Framework", "SQL Server", "REST API", "Azure", "Git")),
+                new StarterJob("Cloud Engineer", "SkyScale Cloud", "Bengaluru",
+                        "Design, provision and secure cloud infrastructure, automating it with infrastructure as code.",
+                        List.of("AWS", "Azure", "Linux", "Terraform", "Networking", "Docker", "Python", "IAM")),
+                new StarterJob("Site Reliability Engineer", "UptimeOps", "Bengaluru",
+                        "Keep production systems reliable: monitoring, alerting, incident response and automation of operations.",
+                        List.of("Linux", "Kubernetes", "Prometheus", "Grafana", "Python", "CI/CD", "Incident Management", "Cloud Computing")),
+                new StarterJob("Cybersecurity Analyst", "SecureGrid", "Gurugram",
+                        "Monitor and protect systems: detect threats, assess vulnerabilities and respond to security incidents.",
+                        List.of("Network Security", "SIEM", "Linux", "Firewalls", "Vulnerability Assessment", "Incident Response", "OWASP", "Python")),
+                new StarterJob("Network Engineer", "LinkCore Networks", "Noida",
+                        "Plan, configure and troubleshoot enterprise LAN/WAN networks, routing, switching and network security.",
+                        List.of("Computer Networks", "TCP/IP", "Routing", "Switching", "Cisco", "Firewalls", "Linux", "Network Security")),
+                new StarterJob("Embedded Systems Engineer", "CircuitMinds", "Bengaluru",
+                        "Develop firmware for microcontroller-based products, drivers for peripherals and real-time features.",
+                        List.of("Embedded C", "C", "Microcontrollers", "RTOS", "ARM", "UART", "SPI", "I2C")),
+                new StarterJob("VLSI Design Engineer", "SiliconPath", "Hyderabad",
+                        "Design and verify digital circuits for chips: RTL design, simulation, synthesis and timing analysis.",
+                        List.of("Verilog", "SystemVerilog", "Digital Design", "FPGA", "ASIC", "Static Timing Analysis", "UVM", "CMOS")),
+                new StarterJob("UI/UX Designer", "DesignHive", "Mumbai",
+                        "Research user needs and design clear, accessible interfaces from wireframes to high-fidelity prototypes.",
+                        List.of("Figma", "Wireframing", "Prototyping", "User Research", "UI Design", "Design Systems", "HTML", "CSS")),
+                new StarterJob("Business Analyst", "ClearPath Consulting", "Pune",
+                        "Gather requirements, model processes and translate business needs into clear specifications for development teams.",
+                        List.of("Requirements Gathering", "SQL", "Excel", "Agile", "JIRA", "UML", "Power BI", "Stakeholder Management"))
         );
     }
 
-    private record StarterJob(
+    record StarterJob(
             String title,
             String company,
             String location,

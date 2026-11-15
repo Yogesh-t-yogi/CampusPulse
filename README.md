@@ -1,290 +1,160 @@
+# CampusPulse
 
-# CampusPulse — AI-Driven Curriculum-to-Industry Gap Analyzer
+Skill-gap analysis between a college syllabus and industry jobs.
 
-CampusPulse is a web application that analyzes academic curricula against industry job requirements. It uses semantic embeddings and AI-assisted recommendations to identify matched skills, partial matches, and curriculum gaps.
+Upload a syllabus PDF. CampusPulse extracts its subjects, units and topics with AI, and compares
+them with the skills a job asks for. You get a coverage report, recommendations, NBA CO/PO
+coverage, and learning plans for students. One installation serves many colleges.
 
-## Technology Stack
+## What it does
 
-| Component | Technologies |
+| Area | Features |
 |---|---|
-| Frontend | React, Vite, Axios, Recharts |
-| Backend | Java 17, Spring Boot, Maven Wrapper, Spring Security, JWT |
-| Database | PostgreSQL, pgvector |
-| AI embedding service | Python, FastAPI, FastEmbed (local ONNX inference) |
-| LLM integration | Groq API |
+| Syllabi | PDF upload (scanned pages read by LlamaParse, no OCR install), AI extraction, curriculum editor, program + semester, sharing with the department, versions with a diff |
+| Reports | Coverage overview, skill by skill, AI recommendations, CO/PO (NBA), compare several jobs, history over time, PDF and Excel export, print |
+| Jobs | Built-in catalog of 20 roles, admin CSV import (35-role dataset in `data/jobs/`, de-duplicated), paste your own job description, market insights |
+| Students | Dashboard, profile and skills, target roles, readiness, learning plan with resources, resume match |
+| Colleges | Many colleges, departments, programs; Excel import of students with a credentials sheet; department/college dashboard |
+| Roles | Platform admin › College admin › HOD › Faculty › Student (see "Roles" below) |
 
-## Project Structure
+## Stack
 
-```text
-CampusPulse/
-├── backend/       # Spring Boot REST API
-├── frontend/      # React application
-├── ai-service/    # Python embedding service
-├── README.md
-└── .gitignore
+- **Frontend:** React 19 + Vite, React Router, Recharts, lucide icons (`frontend/`).
+- **Backend:** Spring Boot 4 / Java 17, Spring Security (JWT), JPA + JdbcTemplate, Flyway, PDFBox, Apache POI (`backend/`).
+- **AI service:** FastAPI + FastEmbed `all-MiniLM-L6-v2`, 384-dimensional embeddings (`ai-service/`). Runs locally; no token needed.
+- **Database:** PostgreSQL with **pgvector**.
+- **Chat AI (with fallback):** Gemini (`gemini-3.5-flash`) → Groq (`openai/gpt-oss-20b`), OpenAI-compatible APIs,
+  for topic extraction, recommendations and learning plans.
+- **Scanned PDFs:** LlamaParse (LlamaCloud) → Gemini / Groq vision models → Tesseract only if installed.
+
+```
+frontend/      React app (pages/, ui/ kit, theme/ tokens)
+backend/       Spring Boot API; db/migration holds Flyway V1..V9
+ai-service/    Embedding service (+ tools/ for calibration, O*NET conversion)
+data/          Starter job dataset, labelled evaluation pairs
+changelog.d/   One fragment per change: what changed, how to test, risk
+docker/        Docker helpers;  docker-compose.yml at the root
 ```
 
-## Prerequisites
+## Run it locally (Windows, one command)
 
-Install the following on Windows:
+### One-time setup
+1. Install PostgreSQL with the [pgvector](https://github.com/pgvector/pgvector) extension, Java 17, Node 20+,
+   Python 3.12. No OCR program is needed: scanned PDFs are read through LlamaParse / AI.
+2. Create the database:
+   ```bash
+   psql -U postgres -c "CREATE DATABASE campuspulse;"
+   ```
+   Flyway creates every table and enables `vector` on first start.
+3. Create your settings file and fill it in:
+   ```bash
+   copy .env.example .env
+   ```
+   | Setting | What to put |
+   |---|---|
+   | `DB_PASSWORD` | Your PostgreSQL password |
+   | `JWT_SECRET` | Any random text of 32+ characters (keep it stable) |
+   | `GEMINI_API_KEY` and/or `GROQ_API_KEY` | At least one, for AI extraction and recommendations ([aistudio.google.com/apikey](https://aistudio.google.com/apikey), [console.groq.com/keys](https://console.groq.com/keys)) |
+   | `LLAMA_CLOUD_API_KEY` | LlamaParse key (`llx-…`, [cloud.llamaindex.ai](https://cloud.llamaindex.ai)) for scanned PDFs (optional; without it Gemini/Groq read them) |
+   | `ADMIN_EMAILS` | Emails that become platform admins (optional) |
+   | `DEMO_USERS_PASSWORD` | Set it to create the demo college and demo accounts (optional, local only) |
+   | `CORS_ALLOWED_ORIGINS` | Only if the frontend runs on another address (default `http://localhost:5173`) |
+   | `RATE_LIMIT_AUTH`, `RATE_LIMIT_AI` | Requests per minute per IP for sign-in and AI calls (defaults 10 / 30; 0 = off) |
+   | `PDF_AI_MODE` | `auto` (read only scanned pages, default), `always` (every page), `off` |
 
-- Git
-- Java JDK 17
-- Node.js and npm
-- Python 3.12 (64-bit recommended)
-- PostgreSQL 18
-- pgvector compatible with PostgreSQL 18
-- A Groq API key
+   Model names, the provider order (`LLM_ORDER`) and the LlamaParse tier can also be changed; see `.env.example`.
 
-The first build may take several minutes while dependencies are installed.
-
-## Free job data strategy
-
-The app no longer depends on Adzuna. The default job source is now a free local dataset and starter catalog that works without keys, rate limits, or external configuration.
-
-Use a CSV import when you want a larger India-focused job dataset. A starter catalog is seeded automatically on first startup so the job market still works immediately in development.
-
-### Available free job and learning features
-
-- Skill aliases (for example, JS = JavaScript and Postgres = PostgreSQL) are
-  normalized during dataset import and matching.
-- AI Recommendations includes a step-by-step learning roadmap for missing or
-  partially covered skills, with freeCodeCamp and available official-document
-  links. Roadmap generation uses the configured Groq API key.
-- The Job Market page accepts a student resume PDF and compares its extracted
-  skills against accessible job profiles. The resume is not saved by
-  CampusPulse; resume text is sent to the configured Groq API for skill
-  extraction only after the user confirms this in the UI.
-- Gap Analysis can be printed or saved as PDF from the browser using
-  **Export report as PDF**.
-- The Job Market page charts the most requested skills in the local catalog
-  using Recharts.
-- Import a CSV dataset from Job Market. Provide a `title`, `job_title`, or
-  `role` column; optional columns include `company`, `location`,
-  `description`, and `skills` (or `required_skills`). Skills can be separated
-  by commas, semicolons, or pipes. CSV uploads are limited to 10 MB and
-  10,000 rows. Verify a dataset's license and permitted use before importing.
-
-## 1. Clone the Repository
-
-Open PowerShell:
-
-```powershell
-cd "$env:USERPROFILE\Desktop"
-git clone https://github.com/Yogesh-t-yogi/CampusPulse.git
-cd CampusPulse
+### Every time
+```bash
+.\start-dev.cmd
 ```
+It creates the Python environment and installs packages on the first run. Then it opens three
+windows: the AI service on port 8000, the backend on port 8081 and the frontend on port 5173.
+When the backend is ready, it opens http://localhost:5173. In the Backend window, check for
+**"Database schema at version 9"**. Close the three windows to stop.
 
-Verify the project folders:
+After pulling changes that touch `backend/pom.xml` or `db/migration`, restart the backend the
+same way (or `.\mvnw spring-boot:run` in `backend/`). Some IDE runners skip Flyway.
 
-```powershell
-Get-ChildItem
+### Run the parts by hand (any OS)
+```bash
+cd ai-service && python -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/python -m uvicorn app:app --port 8000
 ```
-
-## 2. Configure PostgreSQL
-
-Start PostgreSQL and connect using SQL Shell (psql) or the PostgreSQL command-line client.
-
-Create the database:
-
-```sql
-CREATE DATABASE campuspulse;
+```bash
+cd backend && ./mvnw spring-boot:run
 ```
-
-Connect to the database:
-
-```sql
-\c campuspulse
+```bash
+cd frontend && npm install && npm run dev
 ```
+The backend reads the same variables as `.env` from the environment.
 
-Enable pgvector:
-
-```sql
-CREATE EXTENSION vector;
+### Docker (optional)
+```bash
+docker compose up --build
 ```
+This uses `.env`. Open http://localhost:5173. Data is kept in the `db-data` volume; `docker compose down -v` deletes it.
 
-Verify the extension:
+## How a syllabus PDF is read
 
-```sql
-SELECT extversion FROM pg_extension WHERE extname = 'vector';
+1. Each page's text layer is read directly (free, instant).
+2. Pages with no real text (scans, photos, garbled text) are sent to **LlamaParse** in one job.
+3. Pages it can't read go to a vision model (**Gemini**, then **Groq**), then Tesseract if installed.
+4. Results are cached per file, so re-processing the same PDF never calls the AI again.
+5. The upload screen shows progress and a summary, e.g. "12 pages: 9 with text, 3 read by LlamaParse".
+   Pages that couldn't be read stay queued; **Re-process** retries them.
+
+Signed-in users can see which AI providers are set up at `http://localhost:8081/api/health/ai-providers`
+(no keys shown).
+
+## Roles
+
+| Role | Can |
+|---|---|
+| Platform admin | Everything, across colleges (switch college in the header) |
+| College admin | Their college: departments, programs, users, job catalog, all syllabi, dashboards |
+| HOD | Their department: users, syllabi, outcomes, department dashboard |
+| Faculty | Own syllabi + department-shared ones, reports, CO/PO, department dashboard |
+| Student | Their program's shared syllabi, own profile, target roles, learning plan, resume match |
+
+Accounts are usually created by an admin (Users → Import from Excel → download the credentials
+sheet). New users must change their password at first sign-in. There is no email sending.
+
+## Development
+
+```bash
+cd backend && ./mvnw test -Dtest='!CampuspulseBackendApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false
 ```
-
-If the database already exists, do not create it again. Connect to it and verify that the vector extension is enabled.
-
-**Important:** A Git clone does not copy the database records from another computer. You may need to upload your syllabus and recreate job-market demo data.
-
-## 3. Configure the Python AI Service
-
-Open a separate PowerShell terminal:
-
-```powershell
-cd "$env:USERPROFILE\Desktop\CampusPulse\ai-service"
-
-py -3.12 -m venv venv
-.\venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+```bash
+cd frontend && npx eslint . && npm run build
 ```
+CI (`.github/workflows/ci.yml`) runs the backend tests, frontend lint + build, and an AI service import check.
 
-If PowerShell blocks virtual-environment activation, run:
+Every change adds a fragment in `changelog.d/` (what changed, how to test, risk). New database
+changes go in a new `V<n>__*.sql` migration; bump `SchemaVersionCheck.EXPECTED_VERSION`.
 
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\venv\Scripts\Activate.ps1
-```
+Matching thresholds were calibrated on `data/eval/skill-topic-pairs.csv` (see `ai-service/tools/calibrate.py`).
 
-Start the service:
+## Troubleshooting
 
-```powershell
-python -m uvicorn app:app --host 127.0.0.1 --port 8000
-```
+| Problem | Fix |
+|---|---|
+| Red "DATABASE NOT MIGRATED" box or "A database error occurred" | Restart the backend with `start-dev.cmd` / `mvnw` so Flyway runs |
+| "Can't reach CampusPulse" on sign-in | The backend window isn't running or failed — read its log |
+| Topics "could not be indexed" | The AI service (port 8000) isn't running |
+| Recommendations or extraction fail | Set `GEMINI_API_KEY` and/or `GROQ_API_KEY`; the Backend log names the provider and its error (free tiers have rate limits) |
+| "No page of this PDF could be read" | Check `LLAMA_CLOUD_API_KEY` (US region; EU keys need `LLAMA_CLOUD_BASE_URL`) or a Gemini key, then **Re-process** |
+| Log: "model or URL not found (HTTP 404)" | Providers retire models; set a current name (e.g. `GEMINI_MODEL`) in `.env` |
+| "Too many requests" | Rate limit hit; wait a minute (raise `RATE_LIMIT_*` in `.env` if needed) |
+| Blank page after updating | Stop the frontend, delete `frontend/node_modules/.vite`, start again |
+| Port already in use | Close the old window or process using 8000 / 8081 / 5173 |
 
-Keep this terminal open.
+## Security notes
 
-Verify the service in another terminal or browser:
+- Never commit `.env`, passwords or API keys; `.env.example` holds placeholders only.
+- Use a long, stable `JWT_SECRET`; for anything beyond a local machine, serve over HTTPS and
+  set `CORS_ALLOWED_ORIGINS` to the real frontend address.
+- Demo accounts exist only when `DEMO_USERS_PASSWORD` is set — leave it empty outside local demos.
 
-http://127.0.0.1:8000/health
+## License
 
-The embedding service runs `sentence-transformers/all-MiniLM-L6-v2` locally through FastEmbed and returns 384-dimensional embeddings. It does not require a Hugging Face token or inference credits. On first startup, FastEmbed downloads the public model files; subsequent runs use the local cache.
-
-## 4. Configure and Start Spring Boot
-
-Open another PowerShell terminal:
-
-```powershell
-cd "$env:USERPROFILE\Desktop\CampusPulse\backend"
-```
-
-Set the required environment variables in this same terminal.
-
-```powershell
-$env:DB_PASSWORD = "YOUR_POSTGRES_PASSWORD"
-$env:GROQ_API_KEY = "YOUR_GROQ_API_KEY"
-```
-
-Generate a secure JWT secret for this local run:
-
-```powershell
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$bytes = New-Object byte[] 32
-$rng.GetBytes($bytes)
-$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
-$rng.Dispose()
-```
-
-Replace the database password and Groq API key placeholders with your own values. Never commit actual credentials to GitHub. Syllabus processing and custom job skill extraction use the Groq API.
-
-Start the backend:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-Wait until Spring Boot starts successfully on port `8081`.
-
-Verify the health endpoint:
-
-http://localhost:8081/api/health
-
-**JWT note:** The generated JWT secret is temporary. If you restart the backend with a different secret, existing login tokens will no longer be valid. Generate the secret again when starting a new development session and log in again.
-
-## 5. Start the React Frontend
-
-Open another PowerShell terminal:
-
-```powershell
-cd "$env:USERPROFILE\Desktop\CampusPulse\frontend"
-
-npm install
-npm run dev
-```
-
-Open the URL displayed by Vite, normally:
-
-http://localhost:5173
-
-Use the registration page to create a user account, then log in.
-
-During Vite development, the frontend uses `http://localhost:8081` by
-default. To use another backend, set `VITE_API_BASE_URL` in the same terminal
-before starting Vite:
-
-```powershell
-$env:VITE_API_BASE_URL = "http://localhost:8081"
-npm run dev
-```
-
-The production frontend defaults to the deployed CampusPulse backend.
-
-## 6. Start-Up Order
-
-Start the components in this order:
-
-1. PostgreSQL database.
-2. Python AI embedding service on port `8000`.
-3. Spring Boot backend on port `8081`.
-4. React frontend on port `5173`.
-
-Keep the Python, backend, and frontend terminals open while using the application.
-
-## 7. Main Features
-
-- **Guided analysis flow:** Upload and process a syllabus, select an existing job profile or paste a job description, review the curriculum, analyze skill gaps, and view recommendations and dashboard metrics.
-- **Authentication:** User registration, login, and JWT-protected API access.
-- **Dashboard:** Overview of curriculum-to-industry matching results.
-- **Curriculum:** View syllabus subjects, units, and topics.
-- **Job Market:** Choose an existing job posting or create a private profile from a pasted description; AI extracts skills from the description.
-- **Gap Analysis:** Identify matched, partially matched, and missing skills using semantic similarity.
-- **AI Recommendations:** Generate curriculum and learning recommendations.
-
-## 8. Troubleshooting
-
-### Database connection failure
-
-- Confirm PostgreSQL is running.
-- Check the database name, port, username, and password.
-- Ensure `DB_PASSWORD` is set in the terminal running Spring Boot.
-
-### JWT or authentication errors
-
-- Confirm `JWT_SECRET` is set in the backend terminal.
-- Log in again after restarting the backend with a new JWT secret.
-- Check that the frontend sends the access token in the `Authorization: Bearer <token>` header.
-
-### AI service unavailable
-
-- Activate the Python virtual environment.
-- Install `requirements.txt`.
-- Start Uvicorn on port `8000`.
-- Test `http://127.0.0.1:8000/health`.
-
-### Groq API errors
-
-- Verify `GROQ_API_KEY`.
-- Check your Groq account's model availability and rate limits.
-- Confirm the backend's configured model is supported by your account.
-
-### Port already in use
-
-Check which process is using the required port before stopping anything. Do not terminate unfamiliar system or database processes.
-
-### Empty dashboard
-
-A new database may not contain the demo syllabus or job records from your original computer. Start with **Upload Syllabus**, then choose a saved job posting or paste a job description in **Job Market**. Creating a custom job profile and generating AI recommendations require a valid Groq API key. The frontend development server targets the local backend by default; set `VITE_API_BASE_URL` if you intend to use another backend.
-
-## 9. Stop the Application
-
-Press `Ctrl+C` in the frontend, backend, and Python service terminals. PostgreSQL can remain running as a Windows service.
-
-## Security Notes
-
-- Never commit database passwords, Groq API keys, or private credentials.
-- Keep local secrets in environment variables or another secure configuration mechanism.
-- Do not commit virtual environments such as `venv` or `node_modules`.
-- Use a persistent, securely stored JWT secret for a deployed environment.
-- Use HTTPS and appropriate production security settings before deployment.
-
-## Repository
-
-GitHub: https://github.com/Yogesh-t-yogi/CampusPulse
+See [LICENSE](LICENSE).

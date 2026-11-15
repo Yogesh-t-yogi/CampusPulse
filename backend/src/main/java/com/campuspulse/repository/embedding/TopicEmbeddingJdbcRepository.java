@@ -12,6 +12,31 @@ public class TopicEmbeddingJdbcRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    // Remove vectors for every topic of a syllabus (needed before its
+    // topics are replaced, because topic_embedding references topic).
+    public int deleteBySyllabusId(Long syllabusId) {
+        return jdbcTemplate.update("""
+                DELETE FROM topic_embedding te
+                USING topic t, unit u, subject s
+                WHERE te.topic_id = t.id
+                    AND t.unit_id = u.id
+                    AND u.subject_id = s.id
+                    AND s.syllabus_id = ?
+                """, syllabusId);
+    }
+
+    public void deleteByTopicId(Long topicId) {
+        jdbcTemplate.update("DELETE FROM topic_embedding WHERE topic_id = ?", topicId);
+    }
+
+    public void deleteByUnitId(Long unitId) {
+        jdbcTemplate.update("""
+                DELETE FROM topic_embedding te
+                USING topic t
+                WHERE te.topic_id = t.id AND t.unit_id = ?
+                """, unitId);
+    }
+
     public void saveEmbedding(
             Long topicId,
             String embedding,

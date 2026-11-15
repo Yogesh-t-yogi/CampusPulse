@@ -58,7 +58,7 @@ class JobCatalogProviderTest {
                 csv.getBytes(StandardCharsets.UTF_8)
         );
 
-        assertEquals(1, provider.importCsv(file));
+        assertEquals(1, provider.importCsv(file).imported());
 
         var savedJob = org.mockito.ArgumentCaptor.forClass(JobPosting.class);
         verify(jobRepository).save(savedJob.capture());

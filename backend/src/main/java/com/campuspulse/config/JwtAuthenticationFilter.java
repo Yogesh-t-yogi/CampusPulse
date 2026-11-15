@@ -58,6 +58,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .findByEmail(email)
                         .orElse(null);
 
+                if (user != null && user.isMustChangePassword()
+                        && !request.getRequestURI().startsWith("/api/auth/")) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write(
+                            "{\"status\":403,\"code\":\"PASSWORD_CHANGE_REQUIRED\","
+                            + "\"message\":\"Set a new password first.\",\"error\":\"Set a new password first.\"}");
+                    return;
+                }
+
                 if (user != null) {
                     var authentication =
                             new UsernamePasswordAuthenticationToken(

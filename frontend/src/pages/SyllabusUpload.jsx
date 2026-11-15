@@ -1,16 +1,74 @@
 
-import { useRef, useState } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
+import api from "../apiClient";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
-import { API_BASE_URL } from "../api";
+import { processSyllabus } from "../syllabusProcessing";
+import { Alert, Button, Card, Field, Page, PageHeader } from "../ui";
 
-function SyllabusUpload({ token, onUploaded }) {
+// "12 pages: 9 with text, 3 read by AI · page 7 unreadable"
+function describePages(pages) {
+  if (!pages?.counts) return "";
+  const labels = { text: "with text", llamaparse: "read by LlamaParse", ai: "read by AI", ocr: "read by OCR", failed: "unreadable", skipped: "skipped (page limit)" };
+  const parts = Object.entries(pages.counts)
+    .filter(([, n]) => n > 0)
+    .map(([key, n]) => `${n} ${labels[key] || key}`);
+  const missing = pages.unreadablePages?.length ? ` · could not read page ${pages.unreadablePages.join(", ")}` : "";
+  return `${pages.pages} pages: ${parts.join(", ")}${missing}`;
+}
+
+function SyllabusUpload({ token, onUploaded, currentUser }) {
+  const isStudent = currentUser?.role === "STUDENT";
+  // ?revisionOf=<id>: this upload is a new version of that syllabus (keeps its name, program, semester).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const revisionOf = searchParams.get("revisionOf") || "";
+  const [revisionName, setRevisionName] = useState("");
+  useEffect(() => {
+    if (!revisionOf) return;
+    let cancelled = false;
+    api
+      .get(`/api/syllabus/${revisionOf}`)
+      .then(({ data }) => !cancelled && setRevisionName(data?.name || `#${revisionOf}`))
+      .catch(() => !cancelled && setRevisionName(`#${revisionOf}`));
+    return () => {
+      cancelled = true;
+    };
+  }, [revisionOf]);
+  const [programs, setPrograms] = useState([]);
+  const [programId, setProgramId] = useState("");
+  const [semester, setSemester] = useState("");
+
+  // Programs to tag the syllabus with: own department for HOD/faculty, whole college for admins.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/api/org/programs")
+      .then(({ data }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        const ownDepartment = currentUser?.department?.id;
+        const scoped =
+          ["HOD", "FACULTY"].includes(currentUser?.role) && ownDepartment
+            ? list.filter((item) => item.departmentId === ownDepartment)
+            : list;
+        setPrograms(scoped);
+        if (isStudent && currentUser?.program?.id) setProgramId(String(currentUser.program.id));
+      })
+      .catch(() => !cancelled && setPrograms([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isStudent]);
+
+  const selectedProgram = programs.find((item) => String(item.id) === String(programId));
+  const semesterCount = selectedProgram?.durationSemesters || 8;
   const inputRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pagesNote, setPagesNote] = useState("");
 
   // Select a PDF file
   const handleFileChange = (event) => {
@@ -55,15 +113,19 @@ function SyllabusUpload({ token, onUploaded }) {
 
     setLoading(true);
     setError("");
+    setPagesNote("");
     setMessage("");
 
     try {
       // STEP 1: Upload PDF and save extracted text
       const formData = new FormData();
       formData.append("file", file);
+      if (programId) formData.append("programId", programId);
+      if (semester) formData.append("semester", semester);
+      if (revisionOf) formData.append("revisionOf", revisionOf);
 
-      const uploadResponse = await axios.post(
-        `${API_BASE_URL}/api/syllabus/upload`,
+      const uploadResponse = await api.post(
+        `/api/syllabus/upload`,
         formData,
         {
           headers: {
@@ -81,7 +143,6 @@ function SyllabusUpload({ token, onUploaded }) {
         );
       }
 
-      console.log("PDF upload successful:", uploadResponse.data);
       const uploadedSyllabus = {
         ...uploadResponse.data,
         id: uploadedSyllabusId,
@@ -91,21 +152,28 @@ function SyllabusUpload({ token, onUploaded }) {
         await onUploaded(uploadedSyllabus, false);
       }
 
-      // STEP 3: Process the saved syllabus using AI
-      setMessage("PDF uploaded. Processing syllabus content...");
-
-      const processResponse = await axios.post(
-        `${API_BASE_URL}/api/ai/syllabus/${uploadedSyllabusId}/save`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      // STEP 3: Process the saved syllabus using AI. It runs in the
+      // background; we poll its status and show each stage.
+      const scanned = Number(uploadResponse.data?.pagesForAi || 0);
+      setPagesNote(scanned > 0 ? uploadResponse.data.message : "");
+      setMessage(
+        scanned > 0
+          ? `PDF uploaded. AI is reading ${scanned} scanned page(s) first; this can take a few minutes.`
+          : "PDF uploaded. Processing syllabus content..."
       );
 
-      console.log("AI processing successful:", processResponse.data);
-      const processingResult = processResponse.data;
+      const finalStatus = await processSyllabus(
+        uploadedSyllabusId,
+        token,
+        (status) => status.message && setMessage(status.message)
+      );
+
+      if (finalStatus.pages) setPagesNote(describePages(finalStatus.pages));
+      const hasWarnings = finalStatus.status === "READY_WITH_WARNINGS";
+      const processingResult = {
+        embeddingFailures: hasWarnings ? 1 : 0,
+        embeddingWarning: hasWarnings ? finalStatus.message : "",
+      };
 
       // STEP 4: Refresh the syllabus list in the parent component
       if (onUploaded) {
@@ -158,17 +226,64 @@ function SyllabusUpload({ token, onUploaded }) {
   };
 
   return (
-    <div className="syllabus-upload-page">
-      <div className="upload-card">
-        <div className="upload-header">
-          <h2>Upload Syllabus</h2>
-          <p>
-            Upload your syllabus PDF to extract and organize subjects,
-            units, and topics using AI.
-          </p>
-        </div>
+    <Page>
+      <PageHeader
+        eyebrow="Step 1 of 4"
+        title="Upload syllabus"
+        description="Upload a syllabus PDF. CampusPulse extracts its subjects, units and topics with AI and indexes them for skill matching."
+      />
 
+      {revisionOf && (
+        <Alert tone="info">
+          New version of <strong>{revisionName || "…"}</strong>. It keeps that syllabus's name, program and
+          semester; the old version stays so you can compare them in the report's History tab.{" "}
+          <Button variant="ghost" onClick={() => setSearchParams({}, { replace: true })}>
+            Upload as a new syllabus instead
+          </Button>
+        </Alert>
+      )}
+
+      <div className="ui-grid ui-grid-main">
+      <div className="upload-card cp-upload-card">
         <form onSubmit={handleUpload}>
+          <div className="ui-form-row" style={{ marginBottom: 16 }}>
+            <Field
+              label="Program"
+              hint={isStudent ? "Your program." : "Which course this syllabus belongs to."}
+            >
+              <select
+                value={programId}
+                disabled={isStudent || loading}
+                onChange={(event) => {
+                  setProgramId(event.target.value);
+                  setSemester("");
+                }}
+              >
+                <option value="">No program</option>
+                {programs.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name}
+                    {item.regulation ? ` (${item.regulation})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Semester">
+              <select value={semester} disabled={loading} onChange={(event) => setSemester(event.target.value)}>
+                <option value="">Not set</option>
+                {Array.from({ length: semesterCount }, (_, index) => index + 1).map((value) => (
+                  <option key={value} value={String(value)}>
+                    Semester {value}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <p className="ui-muted" style={{ margin: "0 0 16px" }}>
+            {isStudent
+              ? "Your uploads stay private to you."
+              : "Shared with your department and with students of the chosen program. You can change this later in Syllabi."}
+          </p>
           <div
             className="upload-dropzone"
             onClick={() => inputRef.current?.click()}
@@ -245,6 +360,10 @@ function SyllabusUpload({ token, onUploaded }) {
             </div>
           )}
 
+          {pagesNote && (
+            <Alert tone={pagesNote.includes("could not read") ? "warning" : "info"}>{pagesNote}</Alert>
+          )}
+
           {message && (
             <div
               className="upload-message"
@@ -268,10 +387,20 @@ function SyllabusUpload({ token, onUploaded }) {
         </form>
 
         <p className="upload-note">
-          Your syllabus will be uploaded to your CampusPulse backend.
+          PDF up to 10 MB. Scanned pages are read with OCR.
         </p>
       </div>
-    </div>
+
+      <Card title="What happens next" description="Usually under a minute; long syllabi take longer.">
+        <ol className="ui-steps">
+          <li><span className="ui-step-dot">1</span>Text is read from the PDF (OCR for scans)</li>
+          <li><span className="ui-step-dot">2</span>AI extracts subjects, units and topics</li>
+          <li><span className="ui-step-dot">3</span>Topics are indexed for skill matching</li>
+          <li><span className="ui-step-dot">4</span>You review and edit the curriculum</li>
+        </ol>
+      </Card>
+      </div>
+    </Page>
   );
 }
 

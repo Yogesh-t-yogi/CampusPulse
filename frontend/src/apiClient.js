@@ -1,0 +1,47 @@
+import axios from "axios";
+import { API_BASE_URL } from "./api";
+
+export const TOKEN_KEY = "campuspulse_token";
+export const SESSION_EXPIRED_EVENT = "campuspulse:session-expired";
+// Platform admins can act in another college; the backend reads this header.
+export const INSTITUTION_KEY = "campuspulse_institution_id";
+export const PASSWORD_CHANGE_EVENT = "campuspulse:password-change-required";
+
+// One axios instance for the whole app: base URL, login token, and
+// a single place that reacts to an expired session (HTTP 401).
+const api = axios.create({ baseURL: API_BASE_URL });
+
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  const institutionId = sessionStorage.getItem(INSTITUTION_KEY);
+  if (institutionId) {
+    config.headers["X-Institution-Id"] = institutionId;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    if (error.response?.data?.code === "PASSWORD_CHANGE_REQUIRED") {
+      window.dispatchEvent(new Event(PASSWORD_CHANGE_EVENT));
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Readable message from any API error (backend sends {message, error}).
+export function errorMessage(error, fallback = "Something went wrong. Try again.") {
+  if (!error?.response) {
+    return "Can't reach the CampusPulse backend. Check that it's running.";
+  }
+  return error.response.data?.message || error.response.data?.error || fallback;
+}
+
+export default api;

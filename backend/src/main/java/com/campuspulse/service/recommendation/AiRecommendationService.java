@@ -31,14 +31,25 @@ public class AiRecommendationService {
         String prompt = buildPrompt(gapReport);
 
         String response =
-                llmService.generateResponse(prompt);
+                llmService.generateJson(prompt);
 
+        return parseRecommendations(response);
+    }
+
+    List<AiRecommendation> parseRecommendations(String response) {
         try {
 
             String json = cleanJson(response);
 
-            return objectMapper.readValue(
-                    json,
+            // Expected {"recommendations": [...]}; a bare array is accepted too.
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(json);
+            com.fasterxml.jackson.databind.JsonNode list =
+                    root.isArray() ? root : root.path("recommendations");
+            if (!list.isArray()) {
+                throw new IllegalArgumentException("No recommendations array in AI response");
+            }
+            return objectMapper.convertValue(
+                    list,
                     new TypeReference<List<AiRecommendation>>() {}
             );
 
@@ -110,7 +121,8 @@ public class AiRecommendationService {
                 Priority must be one of:
                 HIGH, MEDIUM, LOW
 
-                Return ONLY a valid JSON array.
+                Return ONLY a valid JSON object of the form
+                {"recommendations": [ ...one object per skill... ]}.
 
                 Do not use markdown.
                 Do not use ```json.
@@ -118,7 +130,7 @@ public class AiRecommendationService {
 
                 JSON format:
 
-                [
+                {"recommendations": [
                   {
                     "skill": "PostgreSQL",
                     "status": "GAP",
@@ -146,7 +158,7 @@ public class AiRecommendationService {
                       }
                     ]
                   }
-                ]
+                ]}
                 """
                 .formatted(
                         gapReport.getJobId(),

@@ -1,88 +1,151 @@
-
+import { useEffect, useState } from "react";
 import {
-  LayoutDashboard,
   BookOpen,
+  LayoutDashboard,
+  Building2,
   BriefcaseBusiness,
   ChartNoAxesCombined,
+  Database,
+  FileUp,
+  FileUser,
+  Files,
+  House,
+  Lock,
   Sparkles,
-  FileUp
+  TrendingUp,
+  UserRound,
+  Route,
+  Users as UsersIcon,
 } from "lucide-react";
+import api from "../apiClient";
+import { canSeePage } from "../permissions";
+import { isPageAvailable } from "../workflow";
 
-function Sidebar({ activePage, setActivePage }) {
-  const menuItems = [
-    {
-      name: "Dashboard",
-      icon: LayoutDashboard
-    },
-    {
-      name: "Upload Syllabus",
-      icon: FileUp
-    },
-    {
-      name: "Curriculum",
-      icon: BookOpen
-    },
-    {
-      name: "Job Market",
-      icon: BriefcaseBusiness
-    },
-    {
-      name: "Gap Analysis",
-      icon: ChartNoAxesCombined
-    },
-    {
-      name: "AI Recommendations",
-      icon: Sparkles
-    }
-  ];
+// Menu groups. Workflow items lock until earlier steps are done.
+const GROUPS = [
+  {
+    title: "Overview",
+    items: [
+      { page: "Home", label: "Home", icon: House },
+      { page: "Department dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { page: "Syllabi", label: "Syllabi", icon: Files },
+    ],
+  },
+  {
+    title: "Analysis",
+    workflow: true,
+    items: [
+      { page: "Upload Syllabus", label: "Upload syllabus", icon: FileUp },
+      { page: "Curriculum", label: "Review curriculum", icon: BookOpen },
+      { page: "Job Market", label: "Choose job", icon: BriefcaseBusiness },
+      { page: "Report", label: "Report", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    title: "My growth",
+    items: [
+      { page: "My profile", label: "My profile", icon: UserRound },
+      { page: "Learning plan", label: "Learning plan", icon: Route },
+      { page: "Resume match", label: "Resume match", icon: FileUser },
+    ],
+  },
+  {
+    title: "Tools",
+    items: [{ page: "Market insights", label: "Market insights", icon: TrendingUp }],
+  },
+  {
+    title: "Admin",
+    items: [
+      { page: "Organisation", label: "Organisation", icon: Building2 },
+      { page: "Job catalog", label: "Job catalog", icon: Database },
+      { page: "Users", label: "Users", icon: UsersIcon },
+    ],
+  },
+];
+
+const STATUS_CHECK_MS = 60000;
+
+function useServiceStatus() {
+  const [status, setStatus] = useState({ state: "checking", text: "Checking…" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = () =>
+      api
+        .get("/api/health/services")
+        .then(({ data }) => {
+          if (cancelled) return;
+          if (data.ready) setStatus({ state: "ok", text: "All services running" });
+          else if (!data.embeddingService) setStatus({ state: "warn", text: "AI service offline" });
+          else setStatus({ state: "warn", text: "No AI key set" });
+        })
+        .catch(() => !cancelled && setStatus({ state: "down", text: "Backend offline" }));
+
+    check();
+    const timer = window.setInterval(check, STATUS_CHECK_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return status;
+}
+
+function Sidebar({ activePage, setActivePage, hasSyllabus, hasJob, role }) {
+  const status = useServiceStatus();
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div className="logo-icon">
-          <Sparkles size={22} />
-        </div>
-
-        <div>
-          <h2>CampusPulse</h2>
-          <span>AI Intelligence</span>
-        </div>
+    <aside className="shell-sidebar" aria-label="Main menu">
+      <div className="shell-brand">
+        <span className="shell-brand-mark" aria-hidden="true">
+          <Sparkles size={18} />
+        </span>
+        <span>
+          <strong>CampusPulse</strong>
+          <small>Curriculum intelligence</small>
+        </span>
       </div>
 
-      <nav className="sidebar-nav">
-        <p className="nav-title">MAIN MENU</p>
-
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-
+      <nav className="shell-nav">
+        {GROUPS.map((group) => {
+          const items = group.items.filter((item) => canSeePage(role, item.page));
+          if (items.length === 0) return null;
           return (
-            <button
-              key={item.name}
-              type="button"
-              onClick={() => setActivePage(item.name)}
-              className={
-                activePage === item.name
-                  ? "nav-item active"
-                  : "nav-item"
-              }
-            >
-              <Icon size={19} />
-
-              <span>{item.name}</span>
-            </button>
+            <div className="shell-nav-group" key={group.title}>
+              <p className="shell-nav-title">{group.title}</p>
+              {items.map((item) => {
+                const Icon = item.icon;
+                const locked =
+                  group.workflow && !isPageAvailable(item.page, { hasSyllabus, hasJob });
+                const active = activePage === item.page;
+                return (
+                  <button
+                    key={item.page}
+                    type="button"
+                    className={`shell-nav-item${active ? " active" : ""}`}
+                    onClick={() => setActivePage(item.page)}
+                    disabled={locked}
+                    title={locked ? "Finish the earlier steps first" : undefined}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{item.label}</span>
+                    {locked && <Lock size={14} className="shell-nav-lock" aria-label="Locked" />}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="ai-status">
-          <span className="status-dot"></span>
-
-          <div>
-            <strong>AI Engine</strong>
-            <small>Connected</small>
-          </div>
-        </div>
+      <div className={`shell-status shell-status-${status.state}`} role="status">
+        <span className="shell-status-dot" aria-hidden="true" />
+        <span>
+          <strong>AI engine</strong>
+          <small>{status.text}</small>
+        </span>
       </div>
     </aside>
   );

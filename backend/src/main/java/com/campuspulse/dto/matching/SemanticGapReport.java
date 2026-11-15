@@ -1,5 +1,8 @@
 package com.campuspulse.dto.matching;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public class SemanticGapReport {
@@ -16,15 +19,16 @@ public class SemanticGapReport {
 
     private List<SemanticSkillMatch> skillDetails;
 
+    @JsonCreator
     public SemanticGapReport(
-            Long jobId,
-            Long syllabusId,
-            int totalSkills,
-            int matchedSkills,
-            int partialSkills,
-            int gapSkills,
-            double coveragePercentage,
-            List<SemanticSkillMatch> skillDetails) {
+            @JsonProperty("jobId") Long jobId,
+            @JsonProperty("syllabusId") Long syllabusId,
+            @JsonProperty("totalSkills") int totalSkills,
+            @JsonProperty("matchedSkills") int matchedSkills,
+            @JsonProperty("partialSkills") int partialSkills,
+            @JsonProperty("gapSkills") int gapSkills,
+            @JsonProperty("coveragePercentage") double coveragePercentage,
+            @JsonProperty("skillDetails") List<SemanticSkillMatch> skillDetails) {
 
         this.jobId = jobId;
         this.syllabusId = syllabusId;

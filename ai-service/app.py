@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="CampusPulse AI Embedding Service",
-    version="1.2.0",
+    version="1.3.0",
 )
 
 MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
@@ -25,6 +25,18 @@ def get_embedding_model() -> TextEmbedding:
 
 class EmbeddingRequest(BaseModel):
     text: str = Field(min_length=1)
+
+
+MAX_BATCH = 128
+
+
+class BatchEmbeddingRequest(BaseModel):
+    texts: list[str] = Field(min_length=1, max_length=MAX_BATCH)
+
+
+class BatchEmbeddingResponse(BaseModel):
+    dimension: int
+    embeddings: list[list[float]]
 
 
 class EmbeddingResponse(BaseModel):
@@ -52,14 +64,29 @@ def generate_embedding(request: EmbeddingRequest):
             detail="Text cannot be empty",
         )
 
-    data = next(get_embedding_model().embed([text]))
+    embedding = normalize(next(get_embedding_model().embed([text])))
+    return EmbeddingResponse(
+        text=text,
+        dimension=len(embedding),
+        embedding=embedding,
+    )
+
+
+@app.post("/embed/batch", response_model=BatchEmbeddingResponse)
+def generate_embeddings(request: BatchEmbeddingRequest):
+    texts = [text.strip() for text in request.texts]
+    if any(not text for text in texts):
+        raise HTTPException(status_code=400, detail="Texts cannot be empty")
+
+    embeddings = [normalize(data) for data in get_embedding_model().embed(texts)]
+    return BatchEmbeddingResponse(dimension=384, embeddings=embeddings)
+
+
+def normalize(data) -> list[float]:
     if len(data) != 384:
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Local embedding model returned "
-                f"{len(data)} values; expected 384"
-            ),
+            detail=f"Local embedding model returned {len(data)} values; expected 384",
         )
 
     embedding = [float(value) for value in data]
@@ -76,9 +103,4 @@ def generate_embedding(request: EmbeddingRequest):
             detail="Local embedding model returned a zero vector",
         )
 
-    embedding = [value / norm for value in embedding]
-    return EmbeddingResponse(
-        text=text,
-        dimension=len(embedding),
-        embedding=embedding,
-    )
+    return [value / norm for value in embedding]

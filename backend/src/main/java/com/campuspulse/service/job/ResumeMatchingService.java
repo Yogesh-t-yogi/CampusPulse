@@ -28,6 +28,7 @@ public class ResumeMatchingService {
     private static final int MAX_MATCHES = 20;
 
     private final PdfTextExtractionService pdfTextExtractionService;
+    private final com.campuspulse.service.syllabus.ScannedPageReader pageReader;
     private final JobSkillAiService jobSkillAiService;
     private final JobPostingService jobPostingService;
     private final JobRequiredSkillRepository jobRequiredSkillRepository;
@@ -35,11 +36,13 @@ public class ResumeMatchingService {
 
     public ResumeMatchingService(
             PdfTextExtractionService pdfTextExtractionService,
+            com.campuspulse.service.syllabus.ScannedPageReader pageReader,
             JobSkillAiService jobSkillAiService,
             JobPostingService jobPostingService,
             JobRequiredSkillRepository jobRequiredSkillRepository,
             SkillAliasService skillAliasService) {
         this.pdfTextExtractionService = pdfTextExtractionService;
+        this.pageReader = pageReader;
         this.jobSkillAiService = jobSkillAiService;
         this.jobPostingService = jobPostingService;
         this.jobRequiredSkillRepository = jobRequiredSkillRepository;
@@ -59,7 +62,7 @@ public class ResumeMatchingService {
                     "Resume PDFs must be 5 MB or smaller.");
         }
 
-        String resumeText = pdfTextExtractionService.extractText(resume);
+        String resumeText = resumeText(resume);
         List<String> extractedSkills =
                 jobSkillAiService.extractSkillsFromResume(resumeText);
         Set<String> normalizedResumeSkills = extractedSkills.stream()
@@ -130,5 +133,22 @@ public class ResumeMatchingService {
                 List.copyOf(extractedSkills),
                 matches.stream().limit(MAX_MATCHES).toList()
         );
+    }
+
+    /** Resume text; scanned pages (resumes are short) are read by AI right away. */
+    private String resumeText(MultipartFile resume) throws IOException {
+        PdfTextExtractionService.PdfAnalysis pdf = pdfTextExtractionService.analyse(resume);
+        List<String> pages = new java.util.ArrayList<>(pdf.pageTexts());
+        if (!pdf.pagesToRead().isEmpty() && pageReader.canRead()) {
+            for (var page : pageReader.read(pdf.bytes(), pdf.sha256(), pdf.pagesToRead().stream().limit(5).toList(), done -> { })) {
+                if (!page.text().isBlank()) pages.set(page.page() - 1, page.text());
+            }
+        }
+        String text = PdfTextExtractionService.joinPages(pages, List.of());
+        if (text.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No text could be read from this resume. Upload a PDF with selectable text.");
+        }
+        return text;
     }
 }

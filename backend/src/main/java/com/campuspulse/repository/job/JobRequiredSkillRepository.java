@@ -19,8 +19,9 @@ public interface JobRequiredSkillRepository
             FROM JobRequiredSkill requiredSkill
             JOIN requiredSkill.jobPosting job
             WHERE job.source = 'DATASET'
+                AND (job.institutionId IS NULL OR job.institutionId = :institutionId)
             GROUP BY requiredSkill.skill
             ORDER BY COUNT(DISTINCT job.id) DESC
             """)
-    List<Object[]> findDatasetSkillDemand();
+    List<Object[]> findDatasetSkillDemand(@Param("institutionId") Long institutionId);
 }

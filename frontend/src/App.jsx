@@ -1,20 +1,83 @@
 
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import { useLocation, useNavigate } from "react-router";
+import ErrorBoundary from "./components/ErrorBoundary";
+import api, { INSTITUTION_KEY, PASSWORD_CHANGE_EVENT, SESSION_EXPIRED_EVENT } from "./apiClient";
+import ChangePassword from "./pages/ChangePassword";
 
 import Sidebar from "./components/Sidebar";
-import Dashboard from "./pages/Dashboard";
+import Topbar from "./components/Topbar";
+import Home from "./pages/Home";
+import Syllabi from "./pages/Syllabi";
+import JobCatalog from "./pages/JobCatalog";
+import Organisation from "./pages/Organisation";
+import StudentHome from "./pages/StudentHome";
+import DepartmentDashboard from "./pages/DepartmentDashboard";
+import StudentProfile from "./pages/StudentProfile";
+import LearningPlan from "./pages/LearningPlan";
+import ResumeMatch from "./pages/ResumeMatch";
+import MarketInsights from "./pages/MarketInsights";
 import Curriculum from "./pages/Curriculum";
-import JobMarket from "./pages/JobMarket";
-import GapAnalysis from "./pages/GapAnalysis";
-import AIRecommendations from "./pages/AIRecommendations";
+import ChooseJob from "./pages/ChooseJob";
+import Report from "./pages/Report";
+import Users from "./pages/Users";
+import { canSeePage } from "./permissions";
 import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import WorkflowSteps from "./components/WorkflowSteps";
-import { API_BASE_URL } from "./api";
 import "./App.css";
 import "./FeatureAdditions.css";
+import "./theme/components.css";
+import "./ui/ui.css";
+import "./components/shell.css";
+import { Alert, EmptyState, Page } from "./ui";
+import { ShieldAlert } from "lucide-react";
+import { setMode } from "./theme/theme";
+
+// Each page has its own URL, so refresh and the back button work.
+const PAGE_PATHS = {
+  Home: "/home",
+  Syllabi: "/syllabi",
+  "Upload Syllabus": "/upload",
+  Curriculum: "/curriculum",
+  "Job Market": "/jobs",
+  Report: "/report",
+  "Market insights": "/insights",
+  "Resume match": "/resume",
+  "Job catalog": "/catalog",
+  Organisation: "/organisation",
+  "My profile": "/profile",
+  "Department dashboard": "/dashboard-department",
+  "Learning plan": "/learning",
+  Users: "/users",
+};
+
+const MUST_CHANGE_KEY = "campuspulse_must_change";
+
+// Header title per page.
+const PAGE_TITLES = {
+  "Upload Syllabus": "Upload syllabus",
+  Curriculum: "Review curriculum",
+  "Job Market": "Choose job",
+};
+
+// Pages that show the analysis step bar.
+const WORKFLOW_PAGES = new Set(["Upload Syllabus", "Curriculum", "Job Market", "Report"]);
+
+// Old page URLs now open the matching Report tab.
+const LEGACY_PATHS = {
+  "/dashboard": "/report?tab=overview",
+  "/gap-analysis": "/report?tab=skills",
+  "/recommendations": "/report?tab=recommendations",
+};
+
+function pageFromPath(pathname) {
+  const match = Object.entries(PAGE_PATHS).find(
+    ([, path]) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+  return match ? match[0] : null;
+}
 
 function getSyllabusId(payload) {
   if (!payload || typeof payload !== "object") return "";
@@ -39,11 +102,27 @@ function getSyllabusId(payload) {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState(() =>
-    sessionStorage.getItem("campuspulse_syllabus_id") &&
-    sessionStorage.getItem("campuspulse_job_id")
-      ? "Dashboard"
-      : "Upload Syllabus"
+  const location = useLocation();
+  const navigate = useNavigate();
+  const defaultPage = "Home";
+  const activePage = pageFromPath(location.pathname) || defaultPage;
+  const setActivePage = useCallback(
+    (page) => navigate(PAGE_PATHS[page] || "/upload"),
+    [navigate]
+  );
+  const [sessionNotice, setSessionNotice] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const role = currentUser?.role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  // Platform admins pick which college they work in (sent as X-Institution-Id).
+  const [institutions, setInstitutions] = useState([]);
+  const [actingInstitutionId, setActingInstitutionId] = useState(
+    () => sessionStorage.getItem(INSTITUTION_KEY) || ""
+  );
+  const [pageVersion, setPageVersion] = useState(0);
+  // One-time password: the user must set their own before using the app.
+  const [mustChangePassword, setMustChangePassword] = useState(
+    () => sessionStorage.getItem(MUST_CHANGE_KEY) === "1"
   );
 
   const [token, setToken] = useState(
@@ -63,36 +142,72 @@ function App() {
 
   const [syllabiLoading, setSyllabiLoading] = useState(false);
   const [syllabiError, setSyllabiError] = useState("");
-  const [jobsLoading, setJobsLoading] = useState(false);
+  const [, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
 
-  const handleLogin = (jwtToken) => {
+  const handleLogin = (jwtToken, mustChange = false) => {
     sessionStorage.setItem("campuspulse_token", jwtToken);
+    if (mustChange) sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+    else sessionStorage.removeItem(MUST_CHANGE_KEY);
+    setMustChangePassword(mustChange);
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
 
     setToken(jwtToken);
+    setSessionNotice("");
     setWorkflowNotice("");
     setSelectedSyllabusId("");
     setSelectedJobId("");
-    setActivePage("Upload Syllabus");
+    setActivePage("Home");
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     sessionStorage.removeItem("campuspulse_token");
+    sessionStorage.removeItem(INSTITUTION_KEY);
+    sessionStorage.removeItem(MUST_CHANGE_KEY);
+    setMustChangePassword(false);
     sessionStorage.removeItem("campuspulse_syllabus_id");
     sessionStorage.removeItem("campuspulse_job_id");
 
     setToken(null);
+    setCurrentUser(null);
     setWorkflowNotice("");
     setSyllabi([]);
     setJobs([]);
     setSelectedSyllabusId("");
     setSelectedJobId("");
     setAuthPage("login");
-    setActivePage("Upload Syllabus");
-  };
+    setActivePage("Home");
+  }, [setActivePage]);
+
+  // Any API call that gets HTTP 401 ends the session in one place.
+  useEffect(() => {
+    const onExpired = () => {
+      if (!sessionStorage.getItem("campuspulse_token")) return;
+      handleLogout();
+      setSessionNotice("Your session expired. Sign in again.");
+    };
+    const onMustChange = () => {
+      sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+      setMustChangePassword(true);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    window.addEventListener(PASSWORD_CHANGE_EVENT, onMustChange);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+      window.removeEventListener(PASSWORD_CHANGE_EVENT, onMustChange);
+    };
+  }, [handleLogout]);
+
+  // Bare "/" or unknown paths go to the default page.
+  useEffect(() => {
+    if (token && !pageFromPath(location.pathname)) {
+      navigate(LEGACY_PATHS[location.pathname] || PAGE_PATHS[defaultPage], {
+        replace: true,
+      });
+    }
+  }, [token, location.pathname, navigate, defaultPage]);
 
   // Fetch the logged-in user's syllabi.
   // After upload, prefer the newly created syllabus ID.
@@ -109,8 +224,8 @@ function App() {
       setSyllabiError("");
 
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/syllabus`,
+        const response = await api.get(
+          `/api/syllabus`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -191,7 +306,7 @@ function App() {
     setJobsError("");
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/jobs`, {
+      const response = await api.get(`/api/jobs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const userJobs = Array.isArray(response.data) ? response.data : [];
@@ -199,11 +314,8 @@ function App() {
       const savedExists = userJobs.some(
         (job) => String(job.id) === String(savedId)
       );
-      const nextId = savedExists
-        ? savedId
-        : userJobs.length
-          ? String(userJobs[0].id)
-          : "";
+      // Never pick a job automatically: choosing one is a workflow step.
+      const nextId = savedExists ? savedId : "";
 
       setJobs(userJobs);
       setSelectedJobId(nextId);
@@ -232,6 +344,35 @@ function App() {
     }
   }, [token]);
 
+  // Who is logged in (role decides whether admin tools are shown).
+  useEffect(() => {
+    if (!token) return undefined;
+    let cancelled = false;
+    api
+      .get("/api/auth/me")
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCurrentUser(data);
+        if (data.mustChangePassword) {
+          sessionStorage.setItem(MUST_CHANGE_KEY, "1");
+          setMustChangePassword(true);
+        }
+        // Students and faculty always see their own mode; admins can switch.
+        if (data.role === "SUPER_ADMIN") {
+          api
+            .get("/api/org/institutions")
+            .then((response) => !cancelled && setInstitutions(response.data || []))
+            .catch(() => !cancelled && setInstitutions([]));
+        }
+        // Colours follow the role: teal for students, indigo for faculty/admin.
+        setMode(data.role === "STUDENT" ? "student" : "faculty");
+      })
+      .catch(() => !cancelled && setCurrentUser(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   // Load the user's saved analysis inputs after login.
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -241,6 +382,22 @@ function App() {
 
     return () => window.clearTimeout(timer);
   }, [refreshSyllabi, refreshJobs]);
+
+  const changeInstitution = (id) => {
+    if (id) sessionStorage.setItem(INSTITUTION_KEY, String(id));
+    else sessionStorage.removeItem(INSTITUTION_KEY);
+    setActingInstitutionId(id ? String(id) : "");
+    setPageVersion((value) => value + 1);
+    void refreshJobs();
+  };
+
+  const selectSyllabus = (id) => {
+    const value = id ? String(id) : "";
+    setSelectedSyllabusId(value);
+    setWorkflowNotice("");
+    if (value) sessionStorage.setItem("campuspulse_syllabus_id", value);
+    else sessionStorage.removeItem("campuspulse_syllabus_id");
+  };
 
   const handleSyllabusChange = (event) => {
     const id = event.target.value;
@@ -269,7 +426,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Curriculum");
+    setActivePage("Report");
   };
 
   const handleJobCreated = async (job) => {
@@ -277,7 +434,7 @@ function App() {
     const id = String(job.id);
     setSelectedJobId(id);
     sessionStorage.setItem("campuspulse_job_id", id);
-    setActivePage("Curriculum");
+    setActivePage("Report");
   };
 
   // Called after the PDF upload succeeds.
@@ -304,18 +461,85 @@ function App() {
 
     return (
       <Login
+        notice={sessionNotice}
         onLogin={handleLogin}
         onShowRegister={() => setAuthPage("register")}
       />
     );
   }
 
+  if (mustChangePassword) {
+    return (
+      <ChangePassword
+        user={currentUser}
+        onLogout={handleLogout}
+        onChanged={() => {
+          sessionStorage.removeItem(MUST_CHANGE_KEY);
+          setMustChangePassword(false);
+          setPageVersion((value) => value + 1);
+          void refreshSyllabi();
+          void refreshJobs();
+        }}
+      />
+    );
+  }
+
+  const selectedSyllabusName = syllabi.find(
+    (item) => String(item.id) === String(selectedSyllabusId)
+  )?.name;
+  const selectedJobTitle = jobs.find(
+    (item) => String(item.id) === String(selectedJobId)
+  )?.title;
+
   const renderPage = () => {
+    // Role check (the backend enforces the same rules).
+    if (currentUser && !canSeePage(role, activePage)) {
+      return (
+        <Page>
+          <EmptyState
+            icon={ShieldAlert}
+            title="Not available for your role"
+            description="This page belongs to another role. Use the menu on the left."
+          />
+        </Page>
+      );
+    }
+
     switch (activePage) {
+      case "Home":
+        if (role === "STUDENT") {
+          return <StudentHome user={currentUser} setActivePage={setActivePage} />;
+        }
+        return (
+          <Home
+            user={currentUser}
+            syllabi={syllabi}
+            jobs={jobs}
+            selectedSyllabusId={selectedSyllabusId}
+            selectedJobId={selectedJobId}
+            setActivePage={setActivePage}
+          />
+        );
+
+      case "Syllabi":
+        return (
+          <Syllabi
+            syllabi={syllabi}
+            loading={syllabiLoading}
+            error={syllabiError}
+            selectedSyllabusId={selectedSyllabusId}
+            onSelect={selectSyllabus}
+            onChanged={() => refreshSyllabi()}
+            setActivePage={setActivePage}
+            currentUser={currentUser}
+          />
+        );
+
       case "Upload Syllabus":
         return (
           <SyllabusUpload
             token={token}
+            currentUser={currentUser}
             onUploaded={handleUploaded}
           />
         );
@@ -325,192 +549,120 @@ function App() {
           <Curriculum
             key={selectedSyllabusId}
             syllabusId={selectedSyllabusId}
+            onNext={() => setActivePage("Job Market")}
+            canManage={
+              syllabi.find((item) => String(item.id) === String(selectedSyllabusId))?.canManage !== false
+            }
           />
         );
 
       case "Job Market":
         return (
-          <JobMarket
+          <ChooseJob
+            isAdmin={isAdmin}
             selectedJobId={selectedJobId}
             hasSyllabus={Boolean(selectedSyllabusId)}
             onJobCreated={handleJobCreated}
             onJobSelected={handleJobSelected}
-            onCatalogImported={refreshJobs}
           />
         );
 
-      case "Gap Analysis":
+      case "Market insights":
+        return <MarketInsights user={currentUser} selectedSyllabusId={selectedSyllabusId} syllabi={syllabi} />;
+
+      case "Resume match":
+        return <ResumeMatch setActivePage={setActivePage} />;
+
+      case "My profile":
+        return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} />;
+
+      case "Department dashboard":
+        return <DepartmentDashboard user={currentUser} jobs={jobs} />;
+
+      case "Learning plan":
+        return <LearningPlan setActivePage={setActivePage} />;
+
+      case "Organisation":
         return (
-          <GapAnalysis
-            key={selectedSyllabusId}
-            syllabusId={selectedSyllabusId}
-            jobId={selectedJobId}
-            token={token}
+          <Organisation
+            user={currentUser}
+            onChanged={() =>
+              currentUser?.role === "SUPER_ADMIN" &&
+              api.get("/api/org/institutions").then((response) => setInstitutions(response.data || []))
+            }
           />
         );
 
-      case "AI Recommendations":
-        return (
-          <AIRecommendations
-            key={selectedSyllabusId}
-            syllabusId={selectedSyllabusId}
-            jobId={selectedJobId}
-            token={token}
-          />
-        );
+      case "Users":
+        return <Users currentUser={currentUser} />;
 
-      case "Dashboard":
+      case "Job catalog":
+        return <JobCatalog onChanged={refreshJobs} />;
+
+      case "Report":
       default:
         return (
-          <Dashboard
-            key={selectedSyllabusId}
+          <Report
+            key={`${selectedSyllabusId}-${selectedJobId}`}
             syllabusId={selectedSyllabusId}
             jobId={selectedJobId}
             token={token}
+            syllabusName={selectedSyllabusName}
+            jobTitle={selectedJobTitle}
+            role={role}
+            jobs={jobs}
           />
         );
     }
   };
 
-  const safeSyllabi = Array.isArray(syllabi) ? syllabi : [];
-  const recentJobOptions = jobs.slice(0, 200);
-  const selectedJob = jobs.find(
-    (job) => String(job.id) === String(selectedJobId)
-  );
-  const jobSelectorOptions =
-    selectedJob &&
-    !recentJobOptions.some((job) => String(job.id) === String(selectedJobId))
-      ? [selectedJob, ...recentJobOptions]
-      : recentJobOptions;
+  const pageTitle = PAGE_TITLES[activePage] || activePage;
 
   return (
-    <div className="app-layout">
+    <div className="shell">
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
+        hasSyllabus={Boolean(selectedSyllabusId)}
+        hasJob={Boolean(selectedJobId)}
+        role={role}
       />
 
-      <main className="main-content">
-        <WorkflowSteps
-          activePage={activePage}
-          setActivePage={setActivePage}
-          hasSyllabus={Boolean(selectedSyllabusId)}
-          hasJob={Boolean(selectedJobId)}
+      <div className="shell-main">
+        <Topbar
+          title={pageTitle}
+          user={currentUser}
+          onLogout={handleLogout}
+          syllabi={Array.isArray(syllabi) ? syllabi : []}
+          selectedSyllabusId={selectedSyllabusId}
+          onSyllabusChange={handleSyllabusChange}
+          jobs={jobs}
+          selectedJobId={selectedJobId}
+          onJobChange={handleJobChange}
+          institutions={institutions}
+          actingInstitutionId={actingInstitutionId}
+          onInstitutionChange={changeInstitution}
         />
-        {workflowNotice && (
-          <p className="error-message" role="status">
-            {workflowNotice}
-          </p>
+
+        {WORKFLOW_PAGES.has(activePage) && (
+          <WorkflowSteps
+            activePage={activePage}
+            setActivePage={setActivePage}
+            hasSyllabus={Boolean(selectedSyllabusId)}
+            hasJob={Boolean(selectedJobId)}
+          />
         )}
-        <div
-          className="app-topbar"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "16px",
-            flexWrap: "wrap",
-            padding: "12px 20px",
-          }}
-        >
-          <div className="cp-selection-control">
-            <label htmlFor="syllabus-selector">
-              <strong>Selected syllabus: </strong>
-            </label>
 
-            <select
-              id="syllabus-selector"
-              value={selectedSyllabusId}
-              onChange={handleSyllabusChange}
-              disabled={
-                syllabiLoading || safeSyllabi.length === 0
-              }
-            >
-              <option value="">
-                {syllabiLoading
-                  ? "Loading syllabi..."
-                  : "Select a syllabus"}
-              </option>
-
-              {safeSyllabi.map((syllabus) => (
-                <option
-                  key={syllabus.id}
-                  value={String(syllabus.id)}
-                >
-                  {syllabus.name ||
-                    syllabus.fileName ||
-                    `Syllabus ${syllabus.id}`}
-                  {" "}(ID: {syllabus.id})
-                </option>
-              ))}
-            </select>
-
-            {syllabiError && (
-              <p className="error-message" role="alert">
-                {syllabiError}
-              </p>
-            )}
-
-            {!syllabiLoading &&
-              !syllabiError &&
-              safeSyllabi.length === 0 && (
-                <p>No syllabi found. Upload a syllabus first.</p>
-              )}
+        {(workflowNotice || syllabiError || jobsError) && (
+          <div className="shell-notice">
+            <Alert tone="warning">{workflowNotice || syllabiError || jobsError}</Alert>
           </div>
+        )}
 
-          <div className="cp-selection-control">
-            <label htmlFor="job-selector">
-              <strong>Job profile: </strong>
-            </label>
-            <select
-              id="job-selector"
-              value={selectedJobId}
-              onChange={handleJobChange}
-              disabled={
-                jobsLoading ||
-                jobs.length === 0 ||
-                !selectedSyllabusId
-              }
-            >
-              <option value="">
-                {jobsLoading ? "Loading job profiles..." : "Select a job"}
-              </option>
-              {jobSelectorOptions.map((job) => (
-                <option key={job.id} value={String(job.id)}>
-                  {job.title || `Job ${job.id}`}
-                  {job.company ? ` — ${job.company}` : ""}
-                </option>
-              ))}
-            </select>
-            {jobs.length > 200 && (
-              <p>Showing recent profiles; search the full catalog in Job Market.</p>
-            )}
-            {jobsError && <p className="error-message" role="alert">{jobsError}</p>}
-            {!jobsLoading && !jobsError && jobs.length === 0 && (
-              <p>No job profiles yet. Choose or paste a description in Job Market.</p>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#dc2626",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "600",
-            }}
-          >
-            Logout
-          </button>
+        <div key={`${actingInstitutionId}-${pageVersion}`} className="shell-page">
+          <ErrorBoundary resetKey={location.pathname}>{renderPage()}</ErrorBoundary>
         </div>
-
-        {renderPage()}
-      </main>
+      </div>
     </div>
   );
 }

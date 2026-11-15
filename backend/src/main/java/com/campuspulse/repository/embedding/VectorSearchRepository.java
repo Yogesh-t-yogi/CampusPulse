@@ -15,38 +15,6 @@ public class VectorSearchRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    // Existing topic-to-topic search
-    public List<Map<String, Object>> findSimilarTopics(
-            Long topicId,
-            int limit) {
-
-        String sql = """
-                SELECT
-                    t.id,
-                    t.name,
-                    1 - (te.embedding <=> target.embedding)
-                        AS similarity
-                FROM topic_embedding te
-                JOIN topic t
-                    ON t.id = te.topic_id
-                CROSS JOIN (
-                    SELECT embedding
-                    FROM topic_embedding
-                    WHERE topic_id = ?
-                ) target
-                WHERE te.topic_id <> ?
-                ORDER BY te.embedding <=> target.embedding
-                LIMIT ?
-                """;
-
-        return jdbcTemplate.queryForList(
-                sql,
-                topicId,
-                topicId,
-                limit
-        );
-    }
-
     // Search syllabus topics using an external embedding
     public List<Map<String, Object>> findSimilarTopicsByEmbedding(
             String embedding,
