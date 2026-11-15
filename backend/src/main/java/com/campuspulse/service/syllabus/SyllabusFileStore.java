@@ -54,10 +54,13 @@ public class SyllabusFileStore {
         return n != null && n > 0;
     }
 
-    /** Pages read: clears the waiting list and saves how each page was read. */
-    public void finish(Long syllabusId, Map<String, Object> summary) {
-        jdbc.update("UPDATE syllabus_file SET pending_pages = '[]', page_summary = ? WHERE syllabus_id = ?",
-                json(summary), syllabusId);
+    /**
+     * Saves how each page was read. Pages that could not be read stay waiting, so "Re-process"
+     * tries them again (e.g. after fixing an AI key).
+     */
+    public void finish(Long syllabusId, Map<String, Object> summary, List<Integer> stillWaiting) {
+        jdbc.update("UPDATE syllabus_file SET pending_pages = ?, page_summary = ? WHERE syllabus_id = ?",
+                json(stillWaiting), json(summary), syllabusId);
     }
 
     /** How pages were read (null if this syllabus never needed AI reading). */

@@ -113,4 +113,21 @@ class LlmServiceFallbackTest {
     void keyIsNeverPrinted() {
         assertFalse(ALL.get("llama").toString().contains("k1"));
     }
+
+    @Test
+    void badKeyOrMissingModelIsSkippedOnLaterCalls() {
+        LlmService service = service("llama,groq", p -> p, p -> p.name().equals("llama") ? http(401) : "{}");
+        service.generateJson("first");
+        service.generateJson("second");
+        assertEquals(1, calls.stream().filter(c -> c.startsWith("llama")).count(), "llama paused after 401");
+        assertEquals(2, calls.stream().filter(c -> c.startsWith("groq")).count());
+    }
+
+    @Test
+    void providerErrorMessageIsShortAndReadable() {
+        WebClientResponseException e = WebClientResponseException.create(404, "Not Found", null,
+                "[{\"error\": {\"code\": 404, \"message\": \"This model models/gemini-2.5-flash is no longer available\"}}]"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(" — This model models/gemini-2.5-flash is no longer available", LlmService.providerMessage(e));
+    }
 }

@@ -45,6 +45,9 @@ public class LlmService {
     private final long timeoutSeconds;
     /** Providers that rejected response_format once; called without it afterwards. */
     private final Set<String> noJsonMode = ConcurrentHashMap.newKeySet();
+    /** provider|model → time until which it is skipped (after a bad key or missing model). */
+    private final Map<String, Long> pausedUntil = new ConcurrentHashMap<>();
+    static final long PAUSE_MS = 10 * 60 * 1000;
 
     @Autowired
     public LlmService(WebClient.Builder webClientBuilder, LlmProviders providers, ObjectMapper objectMapper,
@@ -116,8 +119,16 @@ public class LlmService {
         String unreadable = null;
         int rateLimited = 0;
         for (LlmProvider provider : candidates) {
+            Map<String, Object> request = body.apply(provider);
+            String label = provider.name() + "(" + request.get("model") + ")";
+            String pauseKey = provider.name() + "|" + request.get("model");
+            Long until = pausedUntil.get(pauseKey);
+            if (until != null && until > System.currentTimeMillis()) {
+                failures.add(provider.name() + ": skipped after an earlier key/model error");
+                continue;
+            }
             try {
-                String content = callOne(provider, body.apply(provider), json);
+                String content = callOne(provider, request, json);
                 if (json && !readableJson(content)) {
                     failures.add(provider.name() + ": unreadable JSON");
                     if (unreadable == null) unreadable = content;
@@ -131,7 +142,12 @@ public class LlmService {
                 String reason = reason(e);
                 if (reason.equals("rate limit")) rateLimited++;
                 failures.add(provider.name() + ": " + reason);
-                log.warn("AI provider {} failed: {}", provider, reason);
+                if (isConfigError(e)) {
+                    pausedUntil.put(pauseKey, System.currentTimeMillis() + PAUSE_MS);
+                    log.warn("AI provider {} failed: {} — skipping it for 10 minutes; check its key/model in .env", label, reason);
+                } else {
+                    log.warn("AI provider {} failed: {}", label, reason);
+                }
             }
         }
         // Every provider failed; a non-JSON answer is still better than nothing for lenient callers.
@@ -167,11 +183,30 @@ public class LlmService {
             int status = http.getStatusCode().value();
             if (status == 429) return "rate limit";
             if (status == 401 || status == 403) return "key rejected (HTTP " + status + ")";
-            if (status == 404) return "model or URL not found (HTTP 404)";
-            return "HTTP " + status;
+            String detail = providerMessage(http);
+            if (status == 404) return "model or URL not found (HTTP 404)" + detail;
+            return "HTTP " + status + detail;
         }
         if (findCause(e, TimeoutException.class) != null) return "no answer within " + timeoutSeconds + " s";
         return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+    }
+
+    /** Bad key or unknown model/URL: retrying soon won't help. */
+    private static boolean isConfigError(RuntimeException e) {
+        WebClientResponseException http = findCause(e, WebClientResponseException.class);
+        if (http == null) return false;
+        int status = http.getStatusCode().value();
+        return status == 401 || status == 403 || status == 404;
+    }
+
+    /** First line of the provider's error message, shortened (never contains our key). */
+    static String providerMessage(WebClientResponseException http) {
+        String body = http.getResponseBodyAsString();
+        if (body == null || body.isBlank()) return "";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"message\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]{1,200})").matcher(body);
+        String text = m.find() ? m.group(1) : body;
+        text = text.replaceAll("[ \t\r\n]+", " ").trim();
+        return text.isEmpty() ? "" : " — " + (text.length() > 160 ? text.substring(0, 160) + "…" : text);
     }
 
     // ------------------------------------------------------------------ bodies

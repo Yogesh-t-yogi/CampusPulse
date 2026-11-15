@@ -111,7 +111,9 @@ public class SyllabusProcessingService {
             throw new IllegalStateException("The PDF could not be opened for reading.");
         }
         PageMerge merge = mergePages(file.pageTexts(), results);
-        fileStore.finish(syllabusId, merge.summary());
+        @SuppressWarnings("unchecked")
+        List<Integer> unreadable = (List<Integer>) merge.summary().get("unreadablePages");
+        fileStore.finish(syllabusId, merge.summary(), unreadable);
         if (merge.text().isBlank()) {
             throw new IllegalStateException("No page of this PDF could be read. Check the AI keys (vision model) "
                     + "in .env, or upload a PDF with selectable text.");
