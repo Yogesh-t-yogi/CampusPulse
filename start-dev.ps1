@@ -40,7 +40,8 @@ if (-not $env:JWT_SECRET -or $env:JWT_SECRET.Length -lt 32 -or $env:JWT_SECRET -
     $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
     Write-Warn "JWT_SECRET missing or too short in .env - using a temporary one (sign-ins reset on restart)."
 }
-if (-not ($env:LLAMA_API_KEY -or $env:GEMINI_API_KEY -or $env:GROQ_API_KEY)) { Write-Warn "No AI key in .env (LLAMA_API_KEY / GEMINI_API_KEY / GROQ_API_KEY) - AI extraction and recommendations won't work." }
+if (-not ($env:GEMINI_API_KEY -or $env:GROQ_API_KEY)) { Write-Warn "No chat AI key in .env (GEMINI_API_KEY / GROQ_API_KEY) - AI extraction and recommendations won't work." }
+if (-not $env:LLAMA_CLOUD_API_KEY) { Write-Warn "LLAMA_CLOUD_API_KEY is empty - scanned PDFs will be read by Gemini/Groq instead of LlamaParse." }
 if ($env:DEMO_USERS_PASSWORD) { Write-Warn "DEMO_USERS_PASSWORD is set - demo accounts will be created (local use only)." }
 
 # ---------- 2. First-time setup (only when missing) ----------

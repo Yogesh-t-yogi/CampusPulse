@@ -9,7 +9,7 @@ import { Alert, Button, Card, Field, Page, PageHeader } from "../ui";
 // "12 pages: 9 with text, 3 read by AI · page 7 unreadable"
 function describePages(pages) {
   if (!pages?.counts) return "";
-  const labels = { text: "with text", ai: "read by AI", ocr: "read by OCR", failed: "unreadable", skipped: "skipped (page limit)" };
+  const labels = { text: "with text", llamaparse: "read by LlamaParse", ai: "read by AI", ocr: "read by OCR", failed: "unreadable", skipped: "skipped (page limit)" };
   const parts = Object.entries(pages.counts)
     .filter(([, n]) => n > 0)
     .map(([key, n]) => `${n} ${labels[key] || key}`);

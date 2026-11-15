@@ -115,8 +115,8 @@ public class SyllabusProcessingService {
         List<Integer> unreadable = (List<Integer>) merge.summary().get("unreadablePages");
         fileStore.finish(syllabusId, merge.summary(), unreadable);
         if (merge.text().isBlank()) {
-            throw new IllegalStateException("No page of this PDF could be read. Check the AI keys (vision model) "
-                    + "in .env, or upload a PDF with selectable text.");
+            throw new IllegalStateException("No page of this PDF could be read. Check LLAMA_CLOUD_API_KEY "
+                    + "(LlamaParse) or GEMINI_API_KEY in .env, then use Re-process.");
         }
         jdbcTemplate.update("UPDATE syllabus SET extracted_text = ? WHERE id = ?", merge.text(), syllabusId);
         setStatus(syllabusId, PROCESSING, "Extracting subjects, units and topics...");

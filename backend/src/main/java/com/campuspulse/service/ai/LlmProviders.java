@@ -9,19 +9,20 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Providers in the order to try them ({@code llm.order}, default llama → gemini → groq).
+ * Chat providers in the order to try them ({@code llm.order}, default gemini → groq). An unknown name
+ * without llm.&lt;name&gt;.* settings is simply not configured and skipped.
  * Each reads llm.&lt;name&gt;.url / key / model / vision-model (see application.properties).
  */
 @Component
 public class LlmProviders {
 
-    static final List<String> KNOWN = List.of("llama", "gemini", "groq");
+    static final List<String> KNOWN = List.of("gemini", "groq");
 
     private final List<LlmProvider> ordered;
 
     @org.springframework.beans.factory.annotation.Autowired
     public LlmProviders(Environment env) {
-        this(env.getProperty("llm.order", "llama,gemini,groq"), name -> new LlmProvider(
+        this(env.getProperty("llm.order", "gemini,groq"), name -> new LlmProvider(
                 name,
                 env.getProperty("llm." + name + ".url", ""),
                 env.getProperty("llm." + name + ".key", ""),
@@ -33,7 +34,7 @@ public class LlmProviders {
         List<String> names = new ArrayList<>();
         Arrays.stream(order.split(","))
                 .map(s -> s.trim().toLowerCase(Locale.ROOT))
-                .filter(KNOWN::contains)
+                .filter(s -> !s.isEmpty())
                 .filter(s -> !names.contains(s))
                 .forEach(names::add);
         // Providers left out of the order still come last, so a key is never silently ignored.

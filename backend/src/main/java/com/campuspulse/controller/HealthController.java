@@ -1,6 +1,7 @@
 package com.campuspulse.controller;
 
 import com.campuspulse.service.ai.LlmService;
+import com.campuspulse.service.syllabus.LlamaParseClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,11 +15,14 @@ public class HealthController {
 
     private final WebClient embeddingClient;
     private final LlmService llmService;
+    private final LlamaParseClient llamaParse;
 
     public HealthController(
             WebClient.Builder webClientBuilder,
             @Value("${embedding.service.url:http://127.0.0.1:8000}") String embeddingServiceUrl,
-            LlmService llmService) {
+            LlmService llmService,
+            LlamaParseClient llamaParse) {
+        this.llamaParse = llamaParse;
         this.embeddingClient = webClientBuilder.baseUrl(embeddingServiceUrl).build();
         this.llmService = llmService;
     }
@@ -36,7 +40,10 @@ public class HealthController {
     /** AI providers in fallback order and whether each is set up (no keys). */
     @GetMapping("/api/health/ai-providers")
     public java.util.List<Map<String, Object>> aiProviders() {
-        return llmService.status();
+        java.util.List<Map<String, Object>> rows = new java.util.ArrayList<>(llmService.status());
+        rows.add(0, Map.of("name", "llamaparse", "configured", llamaParse.configured(),
+                "model", "PDF parsing, tier " + llamaParse.tier(), "visionModel", "pdf pages"));
+        return rows;
     }
 
     @GetMapping("/api/health/services")

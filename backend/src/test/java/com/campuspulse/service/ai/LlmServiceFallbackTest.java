@@ -105,8 +105,8 @@ class LlmServiceFallbackTest {
 
     @Test
     void providersMissingFromOrderStillComeLast() {
-        LlmProviders providers = new LlmProviders("gemini", ALL::get);
-        assertEquals(List.of("gemini", "llama", "groq"), providers.all().stream().map(LlmProvider::name).toList());
+        LlmProviders providers = new LlmProviders("groq", ALL::get);
+        assertEquals(List.of("groq", "gemini"), providers.all().stream().map(LlmProvider::name).toList());
     }
 
     @Test

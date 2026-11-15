@@ -38,8 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntConsumer;
 
 /**
- * Reads scanned / garbled PDF pages (plan 14, Phase C): page → JPEG → AI vision model through the
- * provider chain (Llama → Gemini → Groq), then Tesseract only if it is installed. Results are cached
+ * Reads scanned / garbled PDF pages (plan 14, Phase C/C2): LlamaParse first (one job for all pages),
+ * then page → JPEG → vision model (Gemini → Groq), then Tesseract only if it is installed. Results are cached
  * by file hash + page so re-processing never calls the AI again.
  */
 @Service
@@ -59,16 +59,24 @@ public class ScannedPageReader {
     }
 
     private final LlmService llmService;
+    private final LlamaParseClient llamaParse;
     private final JdbcTemplate jdbc;
     private final int maxPages;
     private final int parallel;
     private final int dpi;
     private volatile Boolean tesseractAvailable;
 
-    public ScannedPageReader(LlmService llmService, JdbcTemplate jdbc,
+    /** Without LlamaParse (tests). */
+    ScannedPageReader(LlmService llmService, JdbcTemplate jdbc, int maxPages, int parallel, int dpi) {
+        this(llmService, null, jdbc, maxPages, parallel, dpi);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ScannedPageReader(LlmService llmService, LlamaParseClient llamaParse, JdbcTemplate jdbc,
                              @Value("${app.pdf.ai-max-pages:60}") int maxPages,
                              @Value("${app.pdf.ai-parallel:3}") int parallel,
                              @Value("${app.pdf.render-dpi:150}") int dpi) {
+        this.llamaParse = llamaParse;
         this.llmService = llmService;
         this.jdbc = jdbc;
         this.maxPages = Math.max(1, maxPages);
@@ -78,7 +86,8 @@ public class ScannedPageReader {
 
     /** True if some way to read page images exists (AI with vision, or Tesseract). */
     public boolean canRead() {
-        return llmService.status().stream().anyMatch(p -> !String.valueOf(p.get("visionModel")).isBlank())
+        return (llamaParse != null && llamaParse.configured())
+                || llmService.status().stream().anyMatch(p -> !String.valueOf(p.get("visionModel")).isBlank())
                 || tesseractInstalled();
     }
 
@@ -91,15 +100,39 @@ public class ScannedPageReader {
         Map<Integer, PageResult> results = new LinkedHashMap<>();
         Map<Integer, byte[]> images = new LinkedHashMap<>();
 
-        // Cached pages first; render the rest (rendering is single-threaded per document).
+        List<PageResult> fresh = java.util.Collections.synchronizedList(new ArrayList<>());
+
+        // 1. Pages read before (same file) come from the cache.
+        List<Integer> missing = new ArrayList<>();
+        for (int page : toRead) {
+            PageResult cached = cached(sha256, page);
+            if (cached != null) results.put(page, cached);
+            else missing.add(page);
+        }
+
+        // 2. LlamaParse reads the rest in one job.
+        if (!missing.isEmpty() && llamaParse != null && llamaParse.configured()) {
+            try {
+                Map<Integer, String> parsed = llamaParse.parse(pdf, missing);
+                parsed.forEach((page, text) -> {
+                    PageResult r = new PageResult(page, clean(text), "llamaparse");
+                    if (!r.text().isBlank()) {
+                        results.put(page, r);
+                        fresh.add(r);
+                    }
+                });
+                log.info("LlamaParse read {} of {} page(s)", parsed.size(), missing.size());
+            } catch (IllegalStateException e) {
+                log.warn("LlamaParse could not read the pages ({}); trying the vision models", e.getMessage());
+            }
+            missing = missing.stream().filter(page -> !results.containsKey(page)).toList();
+            progress.accept(results.size());
+        }
+
+        // 3. Still missing: render images for the vision models (single-threaded per document).
         try (PDDocument document = Loader.loadPDF(pdf)) {
             PDFRenderer renderer = new PDFRenderer(document);
-            for (int page : toRead) {
-                PageResult cached = cached(sha256, page);
-                if (cached != null) {
-                    results.put(page, cached);
-                    continue;
-                }
+            for (int page : missing) {
                 BufferedImage image = renderer.renderImageWithDPI(page - 1, dpi, ImageType.RGB);
                 images.put(page, jpeg(image));
                 image.flush();
@@ -108,7 +141,6 @@ public class ScannedPageReader {
         AtomicInteger done = new AtomicInteger(results.size());
         progress.accept(done.get());
 
-        List<PageResult> fresh = java.util.Collections.synchronizedList(new ArrayList<>());
         ExecutorService pool = Executors.newFixedThreadPool(parallel);
         try {
             Map<Integer, Future<PageResult>> futures = new LinkedHashMap<>();
@@ -171,7 +203,7 @@ public class ScannedPageReader {
     /** Saves freshly read pages so the same file is never sent to the AI twice. */
     private void storeCache(String sha256, List<PageResult> results) {
         for (PageResult r : results) {
-            if (!"ai".equals(r.method()) && !"ocr".equals(r.method())) continue;
+            if (!List.of("ai", "ocr", "llamaparse").contains(r.method())) continue;
             jdbc.update("""
                     INSERT INTO pdf_page_text (sha256, page_no, method, text) VALUES (?, ?, ?, ?)
                     ON CONFLICT (sha256, page_no) DO NOTHING

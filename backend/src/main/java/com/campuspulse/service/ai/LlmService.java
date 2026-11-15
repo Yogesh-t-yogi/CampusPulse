@@ -25,7 +25,7 @@ import java.util.function.Function;
 
 /**
  * Chat calls with fallback across providers (plan 14, Phase B): tries each configured provider in
- * order (default Llama → Gemini → Groq) and moves on when one is rate limited, down, times out,
+ * order (default Gemini → Groq) and moves on when one is rate limited, down, times out,
  * rejects its key or (for JSON calls) returns unreadable JSON. All use the OpenAI chat format.
  */
 @Service
@@ -110,9 +110,9 @@ public class LlmService {
                        boolean json, boolean vision) {
         if (candidates.isEmpty()) {
             throw new IllegalStateException(vision
-                    ? "No AI provider that can read images is set up. Add LLAMA_API_KEY or GEMINI_API_KEY "
+                    ? "No AI provider that can read images is set up. Add GEMINI_API_KEY or GROQ_API_KEY "
                         + "(with a vision model) to .env and restart the backend."
-                    : "No AI provider is set up. Add LLAMA_API_KEY, GEMINI_API_KEY or GROQ_API_KEY to .env "
+                    : "No AI provider is set up. Add GEMINI_API_KEY or GROQ_API_KEY to .env "
                         + "and restart the backend.");
         }
         List<String> failures = new ArrayList<>();

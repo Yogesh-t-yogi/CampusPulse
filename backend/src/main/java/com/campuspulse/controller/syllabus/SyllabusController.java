@@ -116,8 +116,8 @@ public class SyllabusController {
             if (needsReading && !pageReader.canRead()) {
                 if (pdf.knownText().isBlank()) {
                     return ResponseEntity.badRequest().body(Map.of("error",
-                            "This PDF is scanned (no selectable text). Add LLAMA_API_KEY or GEMINI_API_KEY "
-                                    + "with a vision model to .env so AI can read it, then restart the backend."));
+                            "This PDF is scanned (no selectable text). Add LLAMA_CLOUD_API_KEY (LlamaParse) or "
+                                    + "GEMINI_API_KEY to .env so it can be read, then restart the backend."));
                 }
                 needsReading = false; // use the pages that have text; the rest are skipped
             }
