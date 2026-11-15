@@ -38,7 +38,7 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       LLAMA_API_KEY: ${LLAMA_API_KEY:-}
-      LLAMA_API_URL: ${LLAMA_API_URL:-https://api.llama.com/compat/v1/chat/completions}
+      LLAMA_API_URL: ${LLAMA_API_URL:-https://api.meta.ai/v1/chat/completions}
       LLM_ORDER: ${LLM_ORDER:-llama,gemini,groq}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       DEMO_USERS_PASSWORD: ${DEMO_USERS_PASSWORD:-}
