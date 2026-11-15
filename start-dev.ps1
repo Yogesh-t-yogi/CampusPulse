@@ -17,7 +17,7 @@ function Write-Warn($text) { Write-Host "    $text" -ForegroundColor Yellow }
 $envFile = Join-Path $root ".env"
 if (-not (Test-Path $envFile)) {
     Write-Host "No .env file found. Create it once:" -ForegroundColor Red
-    Write-Host "    Copy-Item .env.example .env   (then fill in DB_PASSWORD, GROQ_API_KEY, ...)"
+    Write-Host "    Copy-Item .env.example .env   (then fill in DB_PASSWORD and at least one AI key)"
     exit 1
 }
 Write-Step "Reading settings from .env"
@@ -40,7 +40,7 @@ if (-not $env:JWT_SECRET -or $env:JWT_SECRET.Length -lt 32 -or $env:JWT_SECRET -
     $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
     Write-Warn "JWT_SECRET missing or too short in .env - using a temporary one (sign-ins reset on restart)."
 }
-if (-not $env:GROQ_API_KEY) { Write-Warn "GROQ_API_KEY is empty - AI extraction and recommendations won't work." }
+if (-not ($env:LLAMA_API_KEY -or $env:GEMINI_API_KEY -or $env:GROQ_API_KEY)) { Write-Warn "No AI key in .env (LLAMA_API_KEY / GEMINI_API_KEY / GROQ_API_KEY) - AI extraction and recommendations won't work." }
 if ($env:DEMO_USERS_PASSWORD) { Write-Warn "DEMO_USERS_PASSWORD is set - demo accounts will be created (local use only)." }
 
 # ---------- 2. First-time setup (only when missing) ----------

@@ -1,5 +1,6 @@
 package com.campuspulse.controller;
 
+import com.campuspulse.service.ai.LlmService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,14 +13,14 @@ import java.util.Map;
 public class HealthController {
 
     private final WebClient embeddingClient;
-    private final String llmApiKey;
+    private final LlmService llmService;
 
     public HealthController(
             WebClient.Builder webClientBuilder,
             @Value("${embedding.service.url:http://127.0.0.1:8000}") String embeddingServiceUrl,
-            @Value("${llm.api.key:}") String llmApiKey) {
+            LlmService llmService) {
         this.embeddingClient = webClientBuilder.baseUrl(embeddingServiceUrl).build();
-        this.llmApiKey = llmApiKey;
+        this.llmService = llmService;
     }
 
     @GetMapping("/api/health")
@@ -31,7 +32,13 @@ public class HealthController {
     }
 
     // Used by the sidebar status light (logged-in users only).
-    // "llmConfigured" only checks that a key is set; it does not call Groq.
+    // "llmConfigured" only checks that some AI provider has a key; it does not call it.
+    /** AI providers in fallback order and whether each is set up (no keys). */
+    @GetMapping("/api/health/ai-providers")
+    public java.util.List<Map<String, Object>> aiProviders() {
+        return llmService.status();
+    }
+
     @GetMapping("/api/health/services")
     public Map<String, Object> services() {
         boolean embeddingUp;
@@ -46,7 +53,7 @@ public class HealthController {
             embeddingUp = false;
         }
 
-        boolean llmConfigured = llmApiKey != null && !llmApiKey.isBlank();
+        boolean llmConfigured = llmService.anyConfigured();
         return Map.of(
                 "embeddingService", embeddingUp,
                 "llmConfigured", llmConfigured,

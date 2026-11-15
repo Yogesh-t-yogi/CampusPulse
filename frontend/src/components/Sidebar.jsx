@@ -77,7 +77,7 @@ function useServiceStatus() {
           if (cancelled) return;
           if (data.ready) setStatus({ state: "ok", text: "All services running" });
           else if (!data.embeddingService) setStatus({ state: "warn", text: "AI service offline" });
-          else setStatus({ state: "warn", text: "Groq key missing" });
+          else setStatus({ state: "warn", text: "No AI key set" });
         })
         .catch(() => !cancelled && setStatus({ state: "down", text: "Backend offline" }));
 

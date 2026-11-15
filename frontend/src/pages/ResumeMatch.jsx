@@ -88,7 +88,7 @@ function ResumeMatch({ setActivePage }) {
             <label className="cp-consent">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>
-                I agree that the resume text is sent to the AI provider (Groq) only to find skills. CampusPulse doesn't store
+                I agree that the resume text is sent to the configured AI provider (Llama, Gemini or Groq) only to find skills. CampusPulse doesn't store
                 the resume — only the skills if you choose to save them.
               </span>
             </label>

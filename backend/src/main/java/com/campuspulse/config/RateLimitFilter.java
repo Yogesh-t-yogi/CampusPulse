@@ -17,7 +17,7 @@ import java.util.function.LongSupplier;
 
 /**
  * Simple per-IP, one-minute window limits (change 047): sign-in/register (guessing passwords)
- * and AI-heavy calls (Groq quota, CPU). In memory, so limits are per backend process —
+ * and AI-heavy calls (provider quotas, CPU). In memory, so limits are per backend process —
  * enough for one college server; put a proxy limit in front if this ever runs on several nodes.
  */
 @Component
