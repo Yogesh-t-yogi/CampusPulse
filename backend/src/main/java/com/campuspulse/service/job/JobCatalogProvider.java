@@ -377,7 +377,8 @@ public class JobCatalogProvider {
         return null;
     }
 
-    private List<StarterJob> starterJobs() {
+    /** Built-in catalog (20 roles), added at start-up when a title is missing. */
+    List<StarterJob> starterJobs() {
         return List.of(
                 new StarterJob("Java Developer", "CampusPulse Labs", "Bengaluru",
                         "Develop enterprise Java services with Spring Boot, REST APIs, and PostgreSQL integrations.",
@@ -402,11 +403,47 @@ public class JobCatalogProvider {
                         List.of("HTML", "CSS", "JavaScript", "React", "UI/UX")),
                 new StarterJob("Data Engineer", "StreamWorks", "Bengaluru",
                         "Design scalable data pipelines, integration flows, and warehouse models to power analytics.",
-                        List.of("Python", "SQL", "ETL", "Spark", "PostgreSQL"))
+                        List.of("Python", "SQL", "ETL", "Spark", "PostgreSQL")),
+                new StarterJob("Machine Learning Engineer", "ModelWorks AI", "Bengaluru",
+                        "Build, train and deploy machine learning models, from data preparation and feature engineering to monitoring in production.",
+                        List.of("Python", "Machine Learning", "Scikit-learn", "TensorFlow", "PyTorch", "Pandas", "SQL", "MLOps")),
+                new StarterJob("Generative AI Engineer", "PromptLabs", "Hyderabad",
+                        "Build LLM-powered features: retrieval-augmented generation, prompt design, evaluation and API services around language models.",
+                        List.of("Python", "Large Language Models", "Prompt Engineering", "LangChain", "RAG", "Vector Database", "FastAPI", "Docker")),
+                new StarterJob("Android Developer", "AppNest", "Pune",
+                        "Develop and publish Android apps with modern UI, offline storage and REST API integration.",
+                        List.of("Kotlin", "Java", "Android SDK", "Jetpack Compose", "REST API", "SQLite", "Firebase", "Git")),
+                new StarterJob(".NET Developer", "CoreStack Solutions", "Chennai",
+                        "Build web APIs and business applications on .NET with SQL Server and cloud deployment.",
+                        List.of("C#", ".NET", "ASP.NET Core", "Entity Framework", "SQL Server", "REST API", "Azure", "Git")),
+                new StarterJob("Cloud Engineer", "SkyScale Cloud", "Bengaluru",
+                        "Design, provision and secure cloud infrastructure, automating it with infrastructure as code.",
+                        List.of("AWS", "Azure", "Linux", "Terraform", "Networking", "Docker", "Python", "IAM")),
+                new StarterJob("Site Reliability Engineer", "UptimeOps", "Bengaluru",
+                        "Keep production systems reliable: monitoring, alerting, incident response and automation of operations.",
+                        List.of("Linux", "Kubernetes", "Prometheus", "Grafana", "Python", "CI/CD", "Incident Management", "Cloud Computing")),
+                new StarterJob("Cybersecurity Analyst", "SecureGrid", "Gurugram",
+                        "Monitor and protect systems: detect threats, assess vulnerabilities and respond to security incidents.",
+                        List.of("Network Security", "SIEM", "Linux", "Firewalls", "Vulnerability Assessment", "Incident Response", "OWASP", "Python")),
+                new StarterJob("Network Engineer", "LinkCore Networks", "Noida",
+                        "Plan, configure and troubleshoot enterprise LAN/WAN networks, routing, switching and network security.",
+                        List.of("Computer Networks", "TCP/IP", "Routing", "Switching", "Cisco", "Firewalls", "Linux", "Network Security")),
+                new StarterJob("Embedded Systems Engineer", "CircuitMinds", "Bengaluru",
+                        "Develop firmware for microcontroller-based products, drivers for peripherals and real-time features.",
+                        List.of("Embedded C", "C", "Microcontrollers", "RTOS", "ARM", "UART", "SPI", "I2C")),
+                new StarterJob("VLSI Design Engineer", "SiliconPath", "Hyderabad",
+                        "Design and verify digital circuits for chips: RTL design, simulation, synthesis and timing analysis.",
+                        List.of("Verilog", "SystemVerilog", "Digital Design", "FPGA", "ASIC", "Static Timing Analysis", "UVM", "CMOS")),
+                new StarterJob("UI/UX Designer", "DesignHive", "Mumbai",
+                        "Research user needs and design clear, accessible interfaces from wireframes to high-fidelity prototypes.",
+                        List.of("Figma", "Wireframing", "Prototyping", "User Research", "UI Design", "Design Systems", "HTML", "CSS")),
+                new StarterJob("Business Analyst", "ClearPath Consulting", "Pune",
+                        "Gather requirements, model processes and translate business needs into clear specifications for development teams.",
+                        List.of("Requirements Gathering", "SQL", "Excel", "Agile", "JIRA", "UML", "Power BI", "Stakeholder Management"))
         );
     }
 
-    private record StarterJob(
+    record StarterJob(
             String title,
             String company,
             String location,
