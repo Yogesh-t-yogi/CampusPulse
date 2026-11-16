@@ -5,7 +5,6 @@ import com.campuspulse.service.CurrentUserService;
 import com.campuspulse.service.student.InsightsService;
 import com.campuspulse.service.student.LearningResources;
 import com.campuspulse.service.student.StudentService;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -87,9 +86,11 @@ public class StudentController {
         return Map.of("skill", body.get("skill"), "status", body.get("status"));
     }
 
+    /** Plain map, not a Jackson 2 JsonNode: Spring Boot 4 writes responses with Jackson 3, which would turn a
+     *  JsonNode into a bean description without the steps (the page then said the AI returned no steps). */
     @GetMapping("/api/student/roadmap")
-    public JsonNode roadmap(@RequestParam String skill) {
-        return studentService.roadmap(skill);
+    public Map<String, Object> roadmap(@RequestParam String skill) {
+        return studentService.roadmapView(skill);
     }
 
     @GetMapping("/api/student/resources")

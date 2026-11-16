@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, CircleDashed, ExternalLink, Lightbulb, ListChecks } from "lucide-react";
+import { Activity, AlertTriangle, BookOpen, CheckCircle2, CircleDashed, ExternalLink, Gauge, Lightbulb, Link2, ListChecks } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import api, { errorMessage } from "../../apiClient";
 import { can } from "../../permissions";
@@ -48,14 +48,62 @@ function Guard({ state, lines = 6, children }) {
 const MATCHED_AT = 0.5;
 const PARTIAL_AT = 0.25;
 
+// Attribute guide shown at the end of the Overview.
 const DEFINITIONS = [
-  ["Coverage", "How much of the job the syllabus teaches: (covered × 100 + partly covered × 50) ÷ total job skills."],
-  ["Covered", `The closest syllabus topic has a similarity of ${MATCHED_AT.toFixed(2)} or more, or the skill is named in a topic title.`],
-  ["Partly covered", `The closest topic has a similarity from ${PARTIAL_AT.toFixed(2)} to ${MATCHED_AT.toFixed(2)}, or the skill appears only in a topic's description.`],
-  ["Gap", `No topic is close enough (similarity below ${PARTIAL_AT.toFixed(2)}) and the skill is not mentioned in any topic.`],
-  ["Similarity", "Cosine similarity between the skill and the topic, from their sentence embeddings (0 = unrelated, 1 = same meaning)."],
-  ["Matched by", "Skill named: found as text in a topic. Closest by meaning: found by embedding similarity."],
+  { term: "Covered", icon: CheckCircle2, tone: "MATCHED",
+    text: `Closest syllabus topic scores ${MATCHED_AT.toFixed(2)} or more, or the skill is named in a topic title.` },
+  { term: "Partly covered", icon: CircleDashed, tone: "PARTIAL",
+    text: `Closest topic scores ${PARTIAL_AT.toFixed(2)} to ${MATCHED_AT.toFixed(2)}, or the skill appears only in a topic description.` },
+  { term: "Gap", icon: AlertTriangle, tone: "GAP",
+    text: `No topic scores ${PARTIAL_AT.toFixed(2)} or more and the skill is not mentioned anywhere in the syllabus.` },
+  { term: "Similarity", icon: Activity, tone: "INFO",
+    text: "Cosine similarity of the skill and topic sentence embeddings. 0 means unrelated, 1 means the same meaning." },
+  { term: "Matched by", icon: Link2, tone: "ACCENT",
+    text: "Skill named means the skill text was found in a topic. Closest by meaning means it was found by similarity." },
+  { term: "Closest topic", icon: BookOpen, tone: "ACCENT",
+    text: "The syllabus topic with the best match for the skill. Gaps have no topic." },
 ];
+const TONE_COLOR = { MATCHED: "var(--cp-matched)", PARTIAL: "var(--cp-partial)", GAP: "var(--cp-gap)", INFO: "var(--cp-info)", ACCENT: "var(--cp-accent)" };
+
+function ReadingGuide() {
+  return (
+    <Card title="How to read this report" description="What each figure on this page means and how it is calculated.">
+      <div className="rg-scale" aria-label="Similarity scale">
+        <div className="rg-bar">
+          <span className="rg-zone" style={{ width: `${PARTIAL_AT * 100}%`, background: "var(--cp-gap-bg)", color: "var(--cp-gap-ink)" }}>Gap</span>
+          <span className="rg-zone" style={{ width: `${(MATCHED_AT - PARTIAL_AT) * 100}%`, background: "var(--cp-partial-bg)", color: "var(--cp-partial-ink)" }}>Partly covered</span>
+          <span className="rg-zone" style={{ width: `${(1 - MATCHED_AT) * 100}%`, background: "var(--cp-matched-bg)", color: "var(--cp-matched-ink)" }}>Covered</span>
+        </div>
+        <div className="rg-ticks">
+          {[0, PARTIAL_AT, MATCHED_AT, 1].map((t) => (
+            <span key={t} style={{ left: `${t * 100}%` }}>{t === 0 || t === 1 ? t.toFixed(1) : t.toFixed(2)}</span>
+          ))}
+        </div>
+        <p className="rg-caption">Similarity of a job skill to its closest syllabus topic</p>
+      </div>
+
+      <div className="rg-formula">
+        <Gauge size={18} aria-hidden="true" />
+        <div>
+          <strong>Coverage</strong>
+          <code>(Covered × 100 + Partly covered × 50) ÷ Total job skills</code>
+        </div>
+      </div>
+
+      <div className="rg-grid">
+        {DEFINITIONS.map(({ term, icon: Icon, tone, text }) => (
+          <div key={term} className="rg-tile" style={{ "--rg-color": TONE_COLOR[tone] }}>
+            <span className="rg-icon"><Icon size={16} aria-hidden="true" /></span>
+            <div>
+              <strong>{term}</strong>
+              <p>{text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 const band = (coverage) =>
   coverage >= 70 ? { label: "Strong alignment", tone: "success" } : coverage >= 40 ? { label: "Moderate alignment", tone: "warning" } : { label: "Low alignment", tone: "danger" };
@@ -240,16 +288,7 @@ function OverviewBody({ report }) {
         </Card>
       </div>
 
-      <Card title="How to read this report">
-        <dl className="rp-defs">
-          {DEFINITIONS.map(([term, text]) => (
-            <div key={term}>
-              <dt>{term}</dt>
-              <dd>{text}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
+      <ReadingGuide />
     </div>
   );
 }
