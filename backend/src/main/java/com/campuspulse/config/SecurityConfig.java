@@ -60,6 +60,10 @@ public class SecurityConfig {
                 // Role-based access (see _claude/plans/07-rbac.md)
                 .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "HOD")
                 .requestMatchers("/api/resume/**").hasAnyRole("STUDENT", "ADMIN", "SUPER_ADMIN")
+                // Mirrors FEATURE_ROLES in frontend/src/permissions.js. Every role opens Report > Recommendations;
+                // students see the student advice, the curriculum part is hidden for them in the page.
+                .requestMatchers("/api/recommendations/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "HOD", "FACULTY", "STUDENT")
+                .requestMatchers("/api/student/roadmap").hasAnyRole("STUDENT", "ADMIN", "SUPER_ADMIN")
 
                 .anyRequest().authenticated()
             )
