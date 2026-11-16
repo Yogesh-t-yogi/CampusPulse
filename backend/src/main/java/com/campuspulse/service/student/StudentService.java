@@ -342,6 +342,11 @@ public class StudentService {
         }
     }
 
+    /** The roadmap as plain maps and lists, safe for any JSON writer. */
+    public Map<String, Object> roadmapView(String skill) {
+        return objectMapper.convertValue(roadmap(skill), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+    }
+
     static final int MAX_ROADMAP_STEPS = 8;
 
     /**

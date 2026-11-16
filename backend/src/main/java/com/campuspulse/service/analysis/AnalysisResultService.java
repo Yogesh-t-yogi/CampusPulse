@@ -72,6 +72,21 @@ public class AnalysisResultService {
         return report;
     }
 
+    /**
+     * Saved recommendations only, never generated here (exports must not wait for an AI call).
+     * Empty if none were generated yet or the saved JSON is unreadable.
+     */
+    public List<AiRecommendation> savedRecommendations(Long jobId, Long syllabusId) {
+        String saved = readColumn("recommendations_json", jobId, syllabusId);
+        if (saved == null) return List.of();
+        try {
+            return objectMapper.readValue(saved, new TypeReference<List<AiRecommendation>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("Ignoring unreadable saved recommendations for job {} syllabus {}", jobId, syllabusId);
+            return List.of();
+        }
+    }
+
     public List<AiRecommendation> getRecommendations(Long jobId, Long syllabusId, boolean refresh) {
         if (!refresh) {
             String saved = readColumn("recommendations_json", jobId, syllabusId);
