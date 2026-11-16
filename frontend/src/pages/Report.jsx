@@ -73,9 +73,9 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
     }
   };
 
-  // Print the server PDF (reliable on paper); fall back to the browser's print of the page.
+  // Print the server PDF from a hidden frame on this page: the print dialog opens here,
+  // with no new tab. Falls back to the browser's print of the page.
   const printReport = async () => {
-    const tab = window.open("", "_blank");
     setExporting("print");
     setNotice("");
     try {
@@ -84,14 +84,22 @@ function Report({ syllabusId, jobId, token, syllabusName, jobTitle, role, jobs =
         responseType: "blob",
       });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
-      if (tab) {
-        tab.location.href = url;
-      } else {
-        window.open(url, "_blank");
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+      const cleanUp = () => window.setTimeout(() => { URL.revokeObjectURL(url); frame.remove(); }, 60_000);
+      frame.onload = () => {
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } catch {
+          window.print();
+        }
+        cleanUp();
+      };
+      frame.src = url;
+      document.body.appendChild(frame);
     } catch (error) {
-      tab?.close();
       setNotice(errorMessage(error, "Couldn't prepare the PDF; using the browser's print instead."));
       window.print();
     } finally {

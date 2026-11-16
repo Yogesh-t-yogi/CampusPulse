@@ -60,12 +60,8 @@ public class ReportExportService {
 
     Data gather(Syllabus syllabus, JobPosting job) {
         SemanticGapReport report = analysisResultService.getReport(job.getId(), syllabus.getId(), false);
-        List<AiRecommendation> recommendations = List.of();
-        try {
-            recommendations = analysisResultService.getRecommendations(job.getId(), syllabus.getId(), false);
-        } catch (RuntimeException e) {
-            log.warn("Export without recommendations: {}", e.getMessage());
-        }
+        // Saved recommendations only: generating them here made exports wait for an AI call.
+        List<AiRecommendation> recommendations = analysisResultService.savedRecommendations(job.getId(), syllabus.getId());
         List<Map<String, Object>> poCoverage = List.of();
         try {
             Object po = outcomeService.outcomesReport(syllabus, job.getId()).get("poCoverage");
@@ -208,6 +204,17 @@ public class ReportExportService {
                 pdf.text(label(m.getStatus()) + "  " + m.getSkill() + topic, 9, false, statusColor(m.getStatus()));
             }
 
+            pdf.gap(8);
+            pdf.text("How to read this report", 11, true, Color.BLACK);
+            pdf.paragraph("Covered: similarity of 0.50 or more to a syllabus topic, or the skill is named in a topic. "
+                    + "Partly covered: similarity from 0.25 to 0.50, or the skill appears only in a topic description. "
+                    + "Gap: no topic close enough. Similarity: cosine similarity of sentence embeddings (0 to 1). "
+                    + "Coverage = (covered x 100 + partly covered x 50) / total skills.", 9);
+
+            if (d.recommendations().isEmpty() && rep.getGapSkills() + rep.getPartialSkills() > 0) {
+                pdf.gap(10);
+                pdf.text("Recommendations: not generated yet. Open the Recommendations tab to create them.", 9, false, Color.DARK_GRAY);
+            }
             if (!d.recommendations().isEmpty()) {
                 pdf.gap(12);
                 pdf.text("Recommendations", 14, true, Color.BLACK);

@@ -569,3 +569,21 @@
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
   @page { margin: 14mm; }
 }
+
+/* Report overview redesign (058) */
+.rp-hero { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 24px; align-items: center; }
+.rp-donut-lg .rp-donut-label { display: grid; place-items: center; align-content: center; }
+.rp-donut-lg .rp-donut-label strong { font-size: 34px; line-height: 1; }
+.rp-donut-lg .rp-donut-label small { font-size: 12px; color: var(--cp-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.rp-hero-text p { margin: 10px 0 0; }
+.rp-formula { font-size: 13px; }
+.rp-stackbar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--cp-accent-tint); margin: 14px 0 8px; }
+.rp-stackbar i { display: block; height: 100%; }
+.rp-legend-left { justify-content: flex-start; }
+.rp-tooltip { display: grid; gap: 2px; padding: 8px 10px; background: var(--cp-card); border: 1px solid var(--cp-border); border-radius: 8px; font-size: 12px; box-shadow: var(--cp-shadow-menu); }
+.rp-defs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px 24px; margin: 0; }
+.rp-defs dt { font-weight: 700; color: var(--cp-text); }
+.rp-defs dd { margin: 2px 0 0; color: var(--cp-text-2); font-size: 14px; }
+.rp-meter-row { display: inline-flex; align-items: center; gap: 8px; }
+.rp-meter-value { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--cp-text-2); }
+@media (max-width: 720px) { .rp-hero { grid-template-columns: 1fr; } }
