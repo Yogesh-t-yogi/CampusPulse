@@ -1,20 +1,29 @@
 import { useState } from "react";
-import { KeyRound, X } from "lucide-react";
+import { KeyRound, Pencil, Save, X } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import { Alert, Button, Card, Field } from "../ui";
 import { useToast } from "../ui/toast";
 
 const ROLE_LABEL = { STUDENT: "Student", FACULTY: "Faculty", HOD: "HOD", ADMIN: "College admin", SUPER_ADMIN: "Platform admin" };
+const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px 24px" };
 
-// Account details (set by the HOD / college admin) and a change-password form.
-function AccountCard({ user }) {
+// Account details, edit form (students: name, USN, department, programme, batch year) and password change.
+function AccountCard({ user, onUserChanged }) {
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const isStudent = user?.role === "STUDENT";
+  const [mode, setMode] = useState("view"); // view | edit | password
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // edit form
+  const [form, setForm] = useState({});
+  const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
+
+  // password form
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
 
   const rows = [
     ["Name", user?.name],
@@ -24,17 +33,74 @@ function AccountCard({ user }) {
     ["College", user?.institution?.name],
     ["Department", user?.department?.name],
     ["Programme", user?.program?.name],
+    ["Batch year", user?.batchYear],
   ];
 
-  const reset = () => {
-    setOpen(false);
+  const close = () => {
+    setMode("view");
+    setError("");
     setCurrent("");
     setNext("");
     setConfirm("");
-    setError("");
   };
 
-  const submit = async (event) => {
+  const loadPrograms = async (departmentId) => {
+    if (!departmentId) return setPrograms([]);
+    try {
+      const { data } = await api.get("/api/org/programs", { params: { departmentId } });
+      setPrograms(Array.isArray(data) ? data : []);
+    } catch {
+      setPrograms([]);
+    }
+  };
+
+  const startEdit = async () => {
+    setError("");
+    setForm({
+      name: user?.name || "",
+      rollNumber: user?.rollNumber || "",
+      departmentId: user?.department?.id ? String(user.department.id) : "",
+      programId: user?.program?.id ? String(user.program.id) : "",
+      batchYear: user?.batchYear ? String(user.batchYear) : "",
+    });
+    setMode("edit");
+    if (!isStudent) return;
+    try {
+      const { data } = await api.get("/api/org/departments");
+      setDepartments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't load the departments."));
+    }
+    await loadPrograms(user?.department?.id);
+  };
+
+  const set = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
+
+  const changeDepartment = (event) => {
+    const departmentId = event.target.value;
+    setForm((f) => ({ ...f, departmentId, programId: "" }));
+    loadPrograms(departmentId);
+  };
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    setError("");
+    if (isStudent && !form.departmentId) return setError("Choose your department.");
+    setBusy(true);
+    try {
+      const body = isStudent ? form : { name: form.name };
+      const { data } = await api.put("/api/auth/me", body);
+      onUserChanged?.(data);
+      toast("Profile saved.");
+      close();
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't save your profile."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const savePassword = async (event) => {
     event.preventDefault();
     setError("");
     if (next.length < 8) return setError("The new password needs at least 8 characters.");
@@ -43,7 +109,7 @@ function AccountCard({ user }) {
     try {
       await api.post("/api/auth/change-password", { currentPassword: current, newPassword: next });
       toast("Password changed.");
-      reset();
+      close();
     } catch (err) {
       setError(errorMessage(err, "Couldn't change the password."));
     } finally {
@@ -54,26 +120,82 @@ function AccountCard({ user }) {
   return (
     <Card
       title="Account"
-      description="Your details come from your HOD or college admin. Ask them if something is wrong."
+      description={
+        isStudent
+          ? "Keep your USN, department and programme correct: your reports and learning plan use them. Email is changed by your HOD or college admin."
+          : "Your role and department are managed by your college admin."
+      }
       actions={
-        !open && (
-          <Button icon={KeyRound} onClick={() => setOpen(true)}>
-            Change password
-          </Button>
+        mode === "view" && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button icon={Pencil} onClick={startEdit}>
+              Edit profile
+            </Button>
+            <Button icon={KeyRound} onClick={() => setMode("password")}>
+              Change password
+            </Button>
+          </div>
         )
       }
     >
-      <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px 24px", margin: 0 }}>
-        {rows.map(([label, value]) => (
-          <div key={label}>
-            <dt className="ui-muted" style={{ fontSize: 13 }}>{label}</dt>
-            <dd style={{ margin: 0, fontWeight: 500 }}>{value || <span className="ui-muted">Not set</span>}</dd>
-          </div>
-        ))}
-      </dl>
+      {mode !== "edit" && (
+        <dl style={{ ...grid, margin: 0 }}>
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt className="ui-muted" style={{ fontSize: 13 }}>{label}</dt>
+              <dd style={{ margin: 0, fontWeight: 500 }}>{value || <span className="ui-muted">Not set</span>}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
-      {open && (
-        <form className="ui-form" onSubmit={submit} style={{ marginTop: 20, maxWidth: 420 }}>
+      {mode === "edit" && (
+        <form className="ui-form" onSubmit={saveProfile}>
+          {error && <Alert tone="danger">{error}</Alert>}
+          <div style={grid}>
+            <Field label="Full name">
+              <input value={form.name} onChange={set("name")} required minLength={2} maxLength={100} autoComplete="name" />
+            </Field>
+            {isStudent && (
+              <>
+                <Field label="Roll number / USN" hint="e.g. 1RF25MC116">
+                  <input value={form.rollNumber} onChange={set("rollNumber")} maxLength={20} style={{ textTransform: "uppercase" }} />
+                </Field>
+                <Field label="Department">
+                  <select value={form.departmentId} onChange={changeDepartment} required>
+                    <option value="">Choose department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Programme">
+                  <select value={form.programId} onChange={set("programId")} disabled={!form.departmentId}>
+                    <option value="">{programs.length ? "Choose programme" : "No programmes in this department"}</option>
+                    {programs.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Batch year" hint="Year you joined, e.g. 2025.">
+                  <input type="number" value={form.batchYear} onChange={set("batchYear")} min={2000} max={2100} />
+                </Field>
+              </>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="primary" type="submit" icon={Save} disabled={busy}>
+              {busy ? "Saving…" : "Save profile"}
+            </Button>
+            <Button variant="ghost" icon={X} onClick={close}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {mode === "password" && (
+        <form className="ui-form" onSubmit={savePassword} style={{ marginTop: 20, maxWidth: 420 }}>
           {error && <Alert tone="danger">{error}</Alert>}
           <Field label="Current password">
             <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required autoComplete="current-password" autoFocus />
@@ -88,7 +210,7 @@ function AccountCard({ user }) {
             <Button variant="primary" type="submit" disabled={busy}>
               {busy ? "Saving…" : "Save new password"}
             </Button>
-            <Button variant="ghost" icon={X} onClick={reset}>
+            <Button variant="ghost" icon={X} onClick={close}>
               Cancel
             </Button>
           </div>

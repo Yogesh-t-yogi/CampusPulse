@@ -9,7 +9,7 @@ const SOURCE_LABEL = { RESUME: "From resume", SELF: "Added by you", LEARNED: "Le
 const MAX_ROLES = 5;
 
 // Student profile: target roles (≤5), my skills, my course syllabus.
-function StudentProfile({ user, jobs, syllabi, onChanged }) {
+function StudentProfile({ user, jobs, syllabi, onChanged, onUserChanged }) {
   const toast = useToast();
   const [profile, setProfile] = useState(null);
   const [roleIds, setRoleIds] = useState([]);
@@ -110,7 +110,7 @@ function StudentProfile({ user, jobs, syllabi, onChanged }) {
         description="Your account, the roles you want, the skills you have, and the course you're studying. Your dashboard and learning plan use these."
       />
 
-      <AccountCard user={user} />
+      <AccountCard user={user} onUserChanged={onUserChanged} />
 
       <Card
         title="Target roles"

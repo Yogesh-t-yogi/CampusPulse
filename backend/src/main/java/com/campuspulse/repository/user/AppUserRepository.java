@@ -10,4 +10,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    /** USN taken by someone else in the same college (case-insensitive). */
+    boolean existsByInstitutionIdAndRollNumberIgnoreCaseAndIdNot(Long institutionId, String rollNumber, Long id);
 }
