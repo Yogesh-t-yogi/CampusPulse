@@ -295,6 +295,12 @@ function OverviewBody({ report }) {
 
 export function ReportOverview({ syllabusId, jobId }) {
   const state = useSaved(reportPath, syllabusId, jobId);
+  // Start the recommendations in the background once the report exists, so the tab opens ready
+  // (the server runs one AI job per syllabus × job and saves it).
+  const ready = Boolean(state.data);
+  useEffect(() => {
+    if (ready) api.get(recommendationsPath(jobId, syllabusId)).catch(() => {});
+  }, [ready, jobId, syllabusId]);
   return (
     <Guard state={state}>
       {state.data && <OverviewBody report={state.data} />}

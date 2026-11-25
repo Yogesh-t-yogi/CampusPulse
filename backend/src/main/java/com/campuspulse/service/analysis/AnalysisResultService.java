@@ -99,15 +99,37 @@ public class AnalysisResultService {
             }
         }
 
-        SemanticGapReport report = getReport(jobId, syllabusId, false);
-        List<AiRecommendation> recommendations = aiRecommendationService.generateRecommendations(report);
-        jdbcTemplate.update("""
-                UPDATE analysis_result
-                SET recommendations_json = ?, updated_at = now()
-                WHERE syllabus_id = ? AND job_id = ?
-                """, toJson(recommendations), syllabusId, jobId);
-        return recommendations;
+        // One AI run per syllabus x job at a time: a second request (prefetch + tab open) waits for it.
+        String key = syllabusId + ":" + jobId;
+        java.util.concurrent.CompletableFuture<List<AiRecommendation>> mine = new java.util.concurrent.CompletableFuture<>();
+        java.util.concurrent.CompletableFuture<List<AiRecommendation>> running = inFlight.putIfAbsent(key, mine);
+        if (running != null) {
+            try {
+                return running.join();
+            } catch (java.util.concurrent.CompletionException e) {
+                throw e.getCause() instanceof RuntimeException runtime ? runtime : e;
+            }
+        }
+        try {
+            SemanticGapReport report = getReport(jobId, syllabusId, false);
+            List<AiRecommendation> recommendations = aiRecommendationService.generateRecommendations(report);
+            jdbcTemplate.update("""
+                    UPDATE analysis_result
+                    SET recommendations_json = ?, updated_at = now()
+                    WHERE syllabus_id = ? AND job_id = ?
+                    """, toJson(recommendations), syllabusId, jobId);
+            mine.complete(recommendations);
+            return recommendations;
+        } catch (RuntimeException e) {
+            mine.completeExceptionally(e);
+            throw e;
+        } finally {
+            inFlight.remove(key, mine);
+        }
     }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.CompletableFuture<List<AiRecommendation>>> inFlight =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     /** History row for this run (5.3). Never fails the report itself. */
     private void saveSnapshot(SemanticGapReport report, Long syllabusId, Long jobId) {
