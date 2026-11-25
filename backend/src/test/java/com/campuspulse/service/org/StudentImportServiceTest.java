@@ -9,6 +9,7 @@ import com.campuspulse.repository.user.AppUserRepository;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,5 +134,60 @@ class StudentImportServiceTest {
         var rows = StudentImportService.readXlsx(new ByteArrayInputStream(file));
         assertEquals(2, rows.size());
         assertEquals("asha.raman@college.edu", rows.get(0).get("email"));
+    }
+
+    private static MockMultipartFile xlsx(String[][] rows) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Students");
+            for (int r = 0; r < rows.length; r++) {
+                var row = sheet.createRow(r);
+                for (int c = 0; c < rows[r].length; c++) row.createCell(c).setCellValue(rows[r][c]);
+            }
+            workbook.write(out);
+            return new MockMultipartFile("file", "students.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", out.toByteArray());
+        }
+    }
+
+    /** TC-05: an Excel import creates student accounts that must change the one-time password at first sign-in. */
+    @Test
+    void tc05_excelImportCreatesAccountsFlaggedMustChangePassword() throws Exception {
+        String[] header = {"name", "email", "roll_number", "department_code", "program_code", "regulation", "batch_year"};
+        var result = service.importFile(xlsx(new String[][] {
+                header,
+                {"Asha Raman", "asha@college.edu", "21CS001", "CSE", "CSE", "2021", "2021"},
+                {"Vikram Iyer", "vikram@college.edu", "21CS002", "CSE", "CSE", "2021", "2021"}}), admin, true);
+
+        assertEquals(2, result.created());
+        assertEquals(0, result.errors());
+        ArgumentCaptor<AppUser> saved = ArgumentCaptor.forClass(AppUser.class);
+        verify(users, times(2)).save(saved.capture());
+        for (AppUser student : saved.getAllValues()) {
+            assertTrue(student.isMustChangePassword(), student.getEmail() + " must change password");
+            assertEquals("STUDENT", student.getRole());
+            assertEquals(1L, student.getInstitutionId(), "created in the importing admin's college");
+            assertEquals(3L, student.getDepartmentId());
+            assertEquals(7L, student.getProgramId());
+            assertEquals("hash", student.getPassword(), "only the encoded password is stored");
+        }
+        assertEquals("asha@college.edu", saved.getAllValues().get(0).getEmail());
+        result.rows().forEach(row -> {
+            assertNotNull(row.temporaryPassword(), "one-time password shown once to the admin");
+            assertFalse(row.temporaryPassword().isBlank());
+        });
+    }
+
+    @Test
+    void reImportKeepsExistingPasswordAndFlag() throws Exception {
+        AppUser existing = user(50L, "STUDENT", 1L, 3L);
+        existing.setEmail("asha@college.edu");
+        existing.setPassword("old-hash");
+        existing.setMustChangePassword(false);
+        when(users.findByEmail("asha@college.edu")).thenReturn(Optional.of(existing));
+        var result = service.importFile(csv(HEADER + "Asha Raman,asha@college.edu,21CS001,CSE,CSE,2021,2021\n"), admin, true);
+        assertEquals(1, result.updated());
+        assertFalse(existing.isMustChangePassword());
+        assertEquals("old-hash", existing.getPassword());
+        assertNull(result.rows().get(0).temporaryPassword());
     }
 }

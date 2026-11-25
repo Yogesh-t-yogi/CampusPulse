@@ -15,19 +15,31 @@ public class AuthService {
     private final JwtService jwtService;
     private final AdminBootstrap adminBootstrap;
     private final InstitutionRepository institutionRepository;
+    /** false (default): only HOD / college admin create accounts; sign-up is open just to ADMIN_EMAILS. */
+    private final boolean selfRegistration;
 
     public AuthService(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AdminBootstrap adminBootstrap,
-            InstitutionRepository institutionRepository) {
+            InstitutionRepository institutionRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.self-registration:false}") boolean selfRegistration) {
 
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.adminBootstrap = adminBootstrap;
         this.institutionRepository = institutionRepository;
+        this.selfRegistration = selfRegistration;
+    }
+
+    /** Message shown when sign-up is closed. */
+    public static final String REGISTRATION_CLOSED =
+            "Accounts are created by your HOD or college admin, with your department already set. Ask them for your login.";
+
+    public boolean selfRegistrationOpen() {
+        return selfRegistration;
     }
 
     /** Roles a person can pick when signing up. ADMIN only via ADMIN_EMAILS. */
@@ -41,6 +53,9 @@ public class AuthService {
             String requestedRole,
             String institutionCode) {
 
+        if (!selfRegistration && !adminBootstrap.isAdminEmail(email)) {
+            throw new IllegalArgumentException(REGISTRATION_CLOSED);
+        }
         String role = requestedRole == null
                 ? "FACULTY"
                 : requestedRole.trim().toUpperCase(java.util.Locale.ROOT);
@@ -73,7 +88,14 @@ public class AuthService {
     }
 
     public boolean mustChangePassword(String email) {
-        return appUserRepository.findByEmail(email).map(AppUser::isMustChangePassword).orElse(false);
+        return findUser(email).map(AppUser::isMustChangePassword).orElse(false);
+    }
+
+    /** Emails are stored lower-case by the HOD / admin screens; older self sign-ups may keep their case. */
+    private java.util.Optional<AppUser> findUser(String email) {
+        String trimmed = email == null ? "" : email.trim();
+        return appUserRepository.findByEmail(trimmed)
+                .or(() -> appUserRepository.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)));
     }
 
     public void changePassword(AppUser user, String currentPassword, String newPassword) {
@@ -96,8 +118,7 @@ public class AuthService {
             String email,
             String password) {
 
-        AppUser user = appUserRepository
-                .findByEmail(email)
+        AppUser user = findUser(email)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Invalid email or password"

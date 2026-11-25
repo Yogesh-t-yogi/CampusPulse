@@ -574,7 +574,7 @@ function App() {
         return <ResumeMatch setActivePage={setActivePage} />;
 
       case "My profile":
-        return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} />;
+        return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} onUserChanged={setCurrentUser} />;
 
       case "Department dashboard":
         return <DepartmentDashboard user={currentUser} jobs={jobs} />;

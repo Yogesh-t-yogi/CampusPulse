@@ -14,6 +14,8 @@ import java.util.List;
 @Service
 public class AiRecommendationService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRecommendationService.class);
+
     private final LlmService llmService;
     private final ObjectMapper objectMapper;
 
@@ -25,15 +27,88 @@ public class AiRecommendationService {
         this.objectMapper = objectMapper;
     }
 
+    /** Skills per AI request; smaller batches answer faster and run in parallel. */
+    static final int BATCH = 6;
+    private static final java.util.concurrent.ExecutorService POOL =
+            java.util.concurrent.Executors.newFixedThreadPool(3, runnable -> {
+                Thread thread = new Thread(runnable, "recommendations");
+                thread.setDaemon(true);
+                return thread;
+            });
+
+    /**
+     * Covered skills get a fixed note (no AI call); partly covered and gap skills go to the AI in
+     * parallel batches of {@link #BATCH}. Result keeps the report's skill order.
+     */
     public List<AiRecommendation> generateRecommendations(
             SemanticGapReport gapReport) {
 
-        String prompt = buildPrompt(gapReport);
+        List<SemanticSkillMatch> all = gapReport.getSkillDetails() == null ? List.of() : gapReport.getSkillDetails();
+        List<SemanticSkillMatch> open = all.stream().filter(match -> !"MATCHED".equals(match.getStatus())).toList();
 
-        String response =
-                llmService.generateJson(prompt);
+        List<java.util.concurrent.CompletableFuture<List<AiRecommendation>>> calls = new java.util.ArrayList<>();
+        for (int from = 0; from < open.size(); from += BATCH) {
+            List<SemanticSkillMatch> batch = open.subList(from, Math.min(open.size(), from + BATCH));
+            String prompt = buildPrompt(gapReport, batch);
+            calls.add(java.util.concurrent.CompletableFuture.supplyAsync(
+                    () -> parseRecommendations(llmService.generateJson(prompt)), POOL));
+        }
+        // A failed batch keeps the others: its skills get the generic advice. Only if every batch
+        // fails is the error passed on (so nothing half-empty is saved while the AI is down).
+        java.util.Map<String, AiRecommendation> fromAi = new java.util.HashMap<>();
+        RuntimeException lastError = null;
+        int failed = 0;
+        for (var call : calls) {
+            try {
+                call.join().forEach(item -> {
+                    if (item.getSkill() != null) fromAi.putIfAbsent(key(item.getSkill()), item);
+                });
+            } catch (java.util.concurrent.CompletionException e) {
+                failed++;
+                lastError = e.getCause() instanceof RuntimeException runtime ? runtime : e;
+                log.warn("Recommendation batch failed: {}", lastError.getMessage());
+            }
+        }
+        if (failed > 0 && failed == calls.size()) {
+            throw lastError;
+        }
 
-        return parseRecommendations(response);
+        List<AiRecommendation> result = new java.util.ArrayList<>();
+        for (SemanticSkillMatch match : all) {
+            AiRecommendation item = "MATCHED".equals(match.getStatus())
+                    ? covered(match)
+                    : fromAi.getOrDefault(key(match.getSkill()), missing(match));
+            result.add(item);
+        }
+        return result;
+    }
+
+    private static String key(String skill) {
+        return skill == null ? "" : skill.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Covered skill: no AI needed. */
+    static AiRecommendation covered(SemanticSkillMatch match) {
+        String topic = match.getTopic() == null ? "the syllabus" : "\"" + match.getTopic() + "\"";
+        AiRecommendation item = new AiRecommendation(match.getSkill(), "MATCHED",
+                "Covered by " + topic + ".",
+                "Keep this topic; add a hands-on exercise if it is taught only in theory.",
+                "Revise " + topic + " and use " + match.getSkill() + " in a small project.",
+                "LOW");
+        item.setLearningRoadmap(List.of());
+        return item;
+    }
+
+    /** The AI skipped a skill: short generic advice instead of dropping it. */
+    private static AiRecommendation missing(SemanticSkillMatch match) {
+        boolean gap = "GAP".equals(match.getStatus());
+        AiRecommendation item = new AiRecommendation(match.getSkill(), match.getStatus(),
+                gap ? "The syllabus does not cover this skill." : "The syllabus covers this skill only partly.",
+                (gap ? "Add " : "Extend coverage of ") + match.getSkill() + " with practical sessions.",
+                "Learn " + match.getSkill() + " from free tutorials and practise it in a small project.",
+                gap ? "HIGH" : "MEDIUM");
+        item.setLearningRoadmap(List.of());
+        return item;
     }
 
     List<AiRecommendation> parseRecommendations(String response) {
@@ -64,12 +139,11 @@ public class AiRecommendationService {
     }
 
     private String buildPrompt(
-            SemanticGapReport gapReport) {
+            SemanticGapReport gapReport, List<SemanticSkillMatch> batch) {
 
         StringBuilder skills = new StringBuilder();
 
-        for (SemanticSkillMatch match :
-                gapReport.getSkillDetails()) {
+        for (SemanticSkillMatch match : batch) {
 
             skills.append("""
                     Skill: %s
@@ -113,7 +187,7 @@ public class AiRecommendationService {
                 6. priority
                 7. learningRoadmap: for PARTIAL or GAP skills, provide 3
                    concise sequential steps, each with a title and an action.
-                   For MATCHED skills return an empty array.
+                   Return one object for each skill listed above, using the same skill name.
 
                 Roadmap actions must be practical, beginner-friendly, and
                 achievable with free learning materials. Do not invent URLs.

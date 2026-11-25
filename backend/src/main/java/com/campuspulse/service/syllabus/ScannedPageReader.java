@@ -65,6 +65,8 @@ public class ScannedPageReader {
     private final int parallel;
     private final int dpi;
     private volatile Boolean tesseractAvailable;
+    /** PDF_AI_MODE=off: never send pages to LlamaParse or the vision models (Tesseract only, if installed). */
+    private volatile boolean aiOff;
 
     /** Without LlamaParse (tests). */
     ScannedPageReader(LlmService llmService, JdbcTemplate jdbc, int maxPages, int parallel, int dpi) {
@@ -84,8 +86,14 @@ public class ScannedPageReader {
         this.dpi = Math.max(72, Math.min(300, dpi));
     }
 
+    @Value("${app.pdf.ai-mode:auto}")
+    void setAiMode(String mode) {
+        this.aiOff = mode != null && "off".equals(mode.trim().toLowerCase(java.util.Locale.ROOT));
+    }
+
     /** True if some way to read page images exists (AI with vision, or Tesseract). */
     public boolean canRead() {
+        if (aiOff) return tesseractInstalled();
         return (llamaParse != null && llamaParse.configured())
                 || llmService.status().stream().anyMatch(p -> !String.valueOf(p.get("visionModel")).isBlank())
                 || tesseractInstalled();
@@ -111,7 +119,7 @@ public class ScannedPageReader {
         }
 
         // 2. LlamaParse reads the rest in one job.
-        if (!missing.isEmpty() && llamaParse != null && llamaParse.configured()) {
+        if (!aiOff && !missing.isEmpty() && llamaParse != null && llamaParse.configured()) {
             try {
                 Map<Integer, String> parsed = llamaParse.parse(pdf, missing);
                 parsed.forEach((page, text) -> {
@@ -174,7 +182,7 @@ public class ScannedPageReader {
         String text = null;
         String method = "failed";
         // AI first, with up to two waits when every provider is rate limited.
-        for (int attempt = 0; attempt < 3 && text == null; attempt++) {
+        for (int attempt = 0; !aiOff && attempt < 3 && text == null; attempt++) {
             try {
                 text = clean(llmService.generateFromImages(PROMPT, List.of(image)));
                 method = "ai";

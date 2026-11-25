@@ -16,6 +16,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.campuspulse.service.user.ProfileService profileService;
     private final CurrentUserService currentUserService;
     private final InstitutionRepository institutionRepository;
     private final DepartmentRepository departmentRepository;
@@ -23,11 +24,13 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            com.campuspulse.service.user.ProfileService profileService,
             CurrentUserService currentUserService,
             InstitutionRepository institutionRepository,
             DepartmentRepository departmentRepository,
             ProgramRepository programRepository) {
         this.authService = authService;
+        this.profileService = profileService;
         this.currentUserService = currentUserService;
         this.institutionRepository = institutionRepository;
         this.departmentRepository = departmentRepository;
@@ -45,6 +48,13 @@ public class AuthController {
         return Map.of("message", "Password changed");
     }
 
+    /** Edit my own profile: name for everyone; students also USN, department, programme, batch year. */
+    @PutMapping("/me")
+    public Map<String, Object> updateMe(@RequestBody Map<String, String> body) {
+        profileService.update(currentUserService.getCurrentUser(), body);
+        return me();
+    }
+
     @GetMapping("/me")
     public Map<String, Object> me() {
         AppUser user = currentUserService.getCurrentUser();
@@ -55,6 +65,7 @@ public class AuthController {
         view.put("role", user.getRole());
         view.put("mustChangePassword", user.isMustChangePassword());
         view.put("rollNumber", user.getRollNumber());
+        view.put("batchYear", user.getBatchYear());
         view.put("institution", user.getInstitutionId() == null ? null
                 : institutionRepository.findById(user.getInstitutionId())
                     .map(i -> Map.of("id", i.getId(), "name", i.getName(), "code", i.getCode()))
@@ -68,6 +79,12 @@ public class AuthController {
                     .map(p -> Map.of("id", p.getId(), "name", p.getName(), "code", p.getCode()))
                     .orElse(null));
         return view;
+    }
+
+    /** Whether anyone may sign up (false: HOD / college admin create accounts). Public. */
+    @GetMapping("/registration")
+    public Map<String, Object> registration() {
+        return Map.of("open", authService.selfRegistrationOpen());
     }
 
     @PostMapping("/register")

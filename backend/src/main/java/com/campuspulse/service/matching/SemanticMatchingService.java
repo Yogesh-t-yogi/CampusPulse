@@ -73,8 +73,8 @@ public class SemanticMatchingService {
                         .findByJobPostingId(jobId);
 
         if (jobSkills.isEmpty()) {
-            throw new RuntimeException(
-                    "No required skills found for job: " + jobId);
+            throw new IllegalArgumentException(
+                    "This job has no skills yet. Add or extract its skills in the job catalog first.");
         }
 
         List<SemanticSkillMatch> results =
