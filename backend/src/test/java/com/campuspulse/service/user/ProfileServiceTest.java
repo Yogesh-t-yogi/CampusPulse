@@ -52,10 +52,10 @@ class ProfileServiceTest {
     @Test
     void studentUpdatesUsnDepartmentProgrammeAndYear() {
         AppUser saved = service.update(student, Map.of(
-                "name", "Yogesh T", "rollNumber", " 1rf25mc116 ",
+                "name", "Asha Rao", "rollNumber", " 4xy24cs042 ",
                 "departmentId", "11", "programId", "200", "batchYear", "2025"));
-        assertEquals("Yogesh T", saved.getName());
-        assertEquals("1RF25MC116", saved.getRollNumber());
+        assertEquals("Asha Rao", saved.getName());
+        assertEquals("4XY24CS042", saved.getRollNumber());
         assertEquals(11L, saved.getDepartmentId());
         assertEquals(200L, saved.getProgramId());
         assertEquals(2025, saved.getBatchYear());
@@ -80,7 +80,7 @@ class ProfileServiceTest {
     @Test
     void duplicateUsnInTheCollegeIsRefused() {
         when(users.existsByInstitutionIdAndRollNumberIgnoreCaseAndIdNot(eq(1L), anyString(), eq(7L))).thenReturn(true);
-        assertThrows(IllegalArgumentException.class, () -> service.update(student, Map.of("rollNumber", "1RF25MC001")));
+        assertThrows(IllegalArgumentException.class, () -> service.update(student, Map.of("rollNumber", "4XY24CS001")));
     }
 
     @Test

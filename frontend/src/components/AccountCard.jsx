@@ -158,7 +158,7 @@ function AccountCard({ user, onUserChanged }) {
             </Field>
             {isStudent && (
               <>
-                <Field label="Roll number / USN" hint="e.g. 1RF25MC116">
+                <Field label="Roll number / USN" hint="e.g. 4XY24CS042">
                   <input value={form.rollNumber} onChange={set("rollNumber")} maxLength={20} style={{ textTransform: "uppercase" }} />
                 </Field>
                 <Field label="Department">
