@@ -35,6 +35,12 @@ public class OutcomeController {
     private final DepartmentRepository departmentRepository;
     private final CurrentUserService currentUserService;
     private final TenantService tenantService;
+    private com.campuspulse.service.job.JobPostingService jobPostingService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setJobPostingService(com.campuspulse.service.job.JobPostingService jobPostingService) {
+        this.jobPostingService = jobPostingService;
+    }
 
     public OutcomeController(
             OutcomeService outcomeService,
@@ -138,6 +144,8 @@ public class OutcomeController {
     @GetMapping("/report")
     public Map<String, Object> report(@RequestParam Long syllabusId, @RequestParam Long jobId) {
         Syllabus syllabus = readableSyllabus(syllabusId);
+        // The job must be one this user may see (global catalog, own college, or own private job).
+        jobPostingService.requireAccessibleJob(jobId, currentUserService.getCurrentUser().getId());
         return outcomeService.outcomesReport(syllabus, jobId);
     }
 

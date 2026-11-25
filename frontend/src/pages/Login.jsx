@@ -3,16 +3,14 @@ import { LogIn } from "lucide-react";
 import { API_BASE_URL } from "../api";
 import { Alert, Button, Field } from "../ui";
 import { AuthLayout, PasswordInput } from "./auth/AuthLayout";
-import { useRegistrationOpen } from "./auth/registration";
 
 const API_URL = `${API_BASE_URL}/api/auth`;
 
-function Login({ onLogin, onShowRegister, notice }) {
+function Login({ onLogin, notice }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const registrationOpen = useRegistrationOpen();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -40,23 +38,7 @@ function Login({ onLogin, onShowRegister, notice }) {
       eyebrow="Welcome back"
       title="Sign in"
       description="Use the account your college gave you."
-      footer={
-        registrationOpen ? (
-          <>
-            New to CampusPulse?
-            <button type="button" className="au-link" onClick={onShowRegister}>
-              Create an account
-            </button>
-          </>
-        ) : (
-          <>
-            No account yet? Your HOD or college admin creates it for your department.
-            <button type="button" className="au-link" onClick={onShowRegister}>
-              Admin setup
-            </button>
-          </>
-        )
-      }
+      footer={<>No account yet? Your HOD or college admin creates it and gives you the first password.</>}
     >
       <form className="au-form" onSubmit={handleSubmit}>
         {notice && !error && <Alert tone="warning">{notice}</Alert>}

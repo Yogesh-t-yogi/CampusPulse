@@ -15,7 +15,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AdminBootstrap adminBootstrap;
     private final InstitutionRepository institutionRepository;
-    /** false (default): only HOD / college admin create accounts; sign-up is open just to ADMIN_EMAILS. */
+    /** false (default): only HOD / college admin create accounts; the platform admin is created at startup. */
     private final boolean selfRegistration;
 
     public AuthService(
@@ -53,7 +53,7 @@ public class AuthService {
             String requestedRole,
             String institutionCode) {
 
-        if (!selfRegistration && !adminBootstrap.isAdminEmail(email)) {
+        if (!selfRegistration) {
             throw new IllegalArgumentException(REGISTRATION_CLOSED);
         }
         String role = requestedRole == null

@@ -46,7 +46,8 @@ import java.util.Set;
 @Service
 public class StudentImportService {
 
-    public static final int MAX_ROWS = 2000;
+    /** At most 100 accounts per import (owner's rule: bulk creation in batches of 100). */
+    public static final int MAX_ROWS = 100;
     public static final long MAX_BYTES = 5L * 1024 * 1024;
     static final List<String> COLUMNS = List.of(
             "name", "email", "roll_number", "department_code", "program_code", "regulation", "batch_year", "role");
@@ -65,6 +66,12 @@ public class StudentImportService {
     private final ProgramRepository programs;
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
+    private com.campuspulse.service.auth.NewAccountPasswords passwords;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPasswords(com.campuspulse.service.auth.NewAccountPasswords passwords) {
+        this.passwords = passwords;
+    }
 
     public StudentImportService(
             AppUserRepository users,
@@ -95,7 +102,7 @@ public class StudentImportService {
             throw new IllegalArgumentException("The file has no student rows.");
         }
         if (rows.size() > MAX_ROWS) {
-            throw new IllegalArgumentException("Import at most " + MAX_ROWS + " rows at a time.");
+            throw new IllegalArgumentException("Import at most " + MAX_ROWS + " people at a time. Split the file into parts of " + MAX_ROWS + " rows.");
         }
 
         Long college = tenantService.actingInstitutionId(actor);
@@ -143,7 +150,7 @@ public class StudentImportService {
             else if (department == null) problem = departmentCode.isEmpty()
                     ? "department_code is missing." : "Unknown department code " + departmentCode + ".";
             else if (!"STUDENT".equals(role) && !"FACULTY".equals(role)) problem = "Role must be STUDENT or FACULTY.";
-            else if (existing != null && !Objects.equals(existing.getInstitutionId(), college)) problem = "This email belongs to another college.";
+            else if (existing != null && !Objects.equals(existing.getInstitutionId(), college)) problem = "This email is already in use.";
             else if (existing != null && TenantService.rank(existing.getRole()) >= TenantService.rank("HOD")) problem = "This email belongs to an HOD or admin; change them in Users.";
 
             if (problem == null) {
@@ -194,7 +201,7 @@ public class StudentImportService {
                     user.setEmail(email);
                     user.setInstitutionId(college);
                     user.setRole(role);
-                    password = TempPasswords.generate();
+                    password = passwords != null ? passwords.next() : TempPasswords.generate();
                     user.setPassword(passwordEncoder.encode(password));
                     user.setMustChangePassword(true);
                 }

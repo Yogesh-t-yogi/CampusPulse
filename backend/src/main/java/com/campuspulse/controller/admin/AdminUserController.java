@@ -12,7 +12,6 @@ import com.campuspulse.repository.org.ProgramRepository;
 import com.campuspulse.repository.syllabus.SyllabusRepository;
 import com.campuspulse.repository.user.AppUserRepository;
 import com.campuspulse.service.CurrentUserService;
-import com.campuspulse.service.auth.TempPasswords;
 import com.campuspulse.service.org.StudentImportService;
 import com.campuspulse.service.org.TenantService;
 import com.campuspulse.service.syllabus.SyllabusService;
@@ -49,6 +48,8 @@ public class AdminUserController {
     private final DepartmentRepository departmentRepository;
     private final ProgramRepository programRepository;
     private final StudentImportService studentImportService;
+    private final com.campuspulse.service.auth.NewAccountPasswords passwords;
+    private final com.campuspulse.service.mail.AccountEmailService accountEmails;
 
     public AdminUserController(
             AppUserRepository appUserRepository,
@@ -61,7 +62,9 @@ public class AdminUserController {
             TenantService tenantService,
             DepartmentRepository departmentRepository,
             ProgramRepository programRepository,
-            StudentImportService studentImportService) {
+            StudentImportService studentImportService,
+            com.campuspulse.service.auth.NewAccountPasswords passwords,
+            com.campuspulse.service.mail.AccountEmailService accountEmails) {
         this.appUserRepository = appUserRepository;
         this.currentUserService = currentUserService;
         this.passwordEncoder = passwordEncoder;
@@ -73,6 +76,8 @@ public class AdminUserController {
         this.departmentRepository = departmentRepository;
         this.programRepository = programRepository;
         this.studentImportService = studentImportService;
+        this.passwords = passwords;
+        this.accountEmails = accountEmails;
     }
 
     @GetMapping
@@ -109,11 +114,13 @@ public class AdminUserController {
         user.setInstitutionId(tenantService.actingInstitutionId(actor));
         applyRoleAndPlacement(actor, user, body);
 
-        String password = TempPasswords.generate();
+        String password = passwords.next();
         user.setPassword(passwordEncoder.encode(password));
         user.setMustChangePassword(true);
-        Map<String, Object> view = view(appUserRepository.save(user));
+        AppUser saved = appUserRepository.save(user);
+        Map<String, Object> view = view(saved);
         view.put("temporaryPassword", password);
+        view.put("emailSent", accountEmails.sendWelcome(saved.getEmail(), saved.getName(), saved.getRole(), null, password));
         return view;
     }
 
@@ -130,7 +137,13 @@ public class AdminUserController {
     public StudentImportService.ImportResult importUsers(
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestParam(value = "apply", defaultValue = "false") boolean apply) throws java.io.IOException {
-        return studentImportService.importFile(file, me(), apply);
+        StudentImportService.ImportResult result = studentImportService.importFile(file, me(), apply);
+        if (result.applied()) {
+            result.rows().stream()
+                    .filter(row -> row.temporaryPassword() != null)
+                    .forEach(row -> accountEmails.sendWelcome(row.email(), row.name(), "CampusPulse user", null, row.temporaryPassword()));
+        }
+        return result;
     }
 
     /** Builds an .xlsx from the one-time passwords the import just returned (nothing is stored). */
@@ -166,11 +179,13 @@ public class AdminUserController {
     @PostMapping("/{id}/reset-password")
     public Map<String, Object> resetPassword(@PathVariable Long id) {
         AppUser user = requireManageable(id);
-        String password = TempPasswords.generate();
+        String password = passwords.next();
         user.setPassword(passwordEncoder.encode(password));
         user.setMustChangePassword(true);
-        Map<String, Object> view = view(appUserRepository.save(user));
+        AppUser saved = appUserRepository.save(user);
+        Map<String, Object> view = view(saved);
         view.put("temporaryPassword", password);
+        view.put("emailSent", accountEmails.sendPasswordReset(saved.getEmail(), saved.getName(), password));
         return view;
     }
 

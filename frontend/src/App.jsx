@@ -14,6 +14,7 @@ import Organisation from "./pages/Organisation";
 import StudentHome from "./pages/StudentHome";
 import DepartmentDashboard from "./pages/DepartmentDashboard";
 import StudentProfile from "./pages/StudentProfile";
+import AccountCard from "./components/AccountCard";
 import LearningPlan from "./pages/LearningPlan";
 import ResumeMatch from "./pages/ResumeMatch";
 import MarketInsights from "./pages/MarketInsights";
@@ -24,14 +25,13 @@ import Users from "./pages/Users";
 import { canSeePage } from "./permissions";
 import SyllabusUpload from "./pages/SyllabusUpload";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import WorkflowSteps from "./components/WorkflowSteps";
 import "./App.css";
 import "./FeatureAdditions.css";
 import "./theme/components.css";
 import "./ui/ui.css";
 import "./components/shell.css";
-import { Alert, EmptyState, Page } from "./ui";
+import { Alert, EmptyState, Page, PageHeader } from "./ui";
 import { ShieldAlert } from "lucide-react";
 import { setMode } from "./theme/theme";
 
@@ -48,6 +48,7 @@ const PAGE_PATHS = {
   "Job catalog": "/catalog",
   Organisation: "/organisation",
   "My profile": "/profile",
+  "My account": "/account",
   "Department dashboard": "/dashboard-department",
   "Learning plan": "/learning",
   Users: "/users",
@@ -129,7 +130,6 @@ function App() {
     () => sessionStorage.getItem("campuspulse_token")
   );
 
-  const [authPage, setAuthPage] = useState("login");
   const [syllabi, setSyllabi] = useState([]);
   const [jobs, setJobs] = useState([]);
 
@@ -177,7 +177,6 @@ function App() {
     setJobs([]);
     setSelectedSyllabusId("");
     setSelectedJobId("");
-    setAuthPage("login");
     setActivePage("Home");
   }, [setActivePage]);
 
@@ -450,20 +449,10 @@ function App() {
   };
 
   if (!token) {
-    if (authPage === "register") {
-      return (
-        <Register
-          onRegistered={() => setAuthPage("login")}
-          onShowLogin={() => setAuthPage("login")}
-        />
-      );
-    }
-
     return (
       <Login
         notice={sessionNotice}
         onLogin={handleLogin}
-        onShowRegister={() => setAuthPage("register")}
       />
     );
   }
@@ -575,6 +564,14 @@ function App() {
 
       case "My profile":
         return <StudentProfile user={currentUser} jobs={jobs} syllabi={syllabi} onChanged={() => {}} onUserChanged={setCurrentUser} />;
+
+      case "My account":
+        return (
+          <Page>
+            <PageHeader eyebrow="Account" title="My account" description="Your details and your password." />
+            <AccountCard user={currentUser} onUserChanged={setCurrentUser} />
+          </Page>
+        );
 
       case "Department dashboard":
         return <DepartmentDashboard user={currentUser} jobs={jobs} />;

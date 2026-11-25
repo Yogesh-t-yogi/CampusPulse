@@ -19,7 +19,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Sign-up is closed by default: HOD / college admin create accounts; only ADMIN_EMAILS may self-register. */
+/** Sign-up is closed by default: HOD / college admin create accounts; the platform admin is created at startup. */
 class SelfRegistrationTest {
 
     private final AppUserRepository users = mock(AppUserRepository.class);
@@ -46,10 +46,11 @@ class SelfRegistrationTest {
     }
 
     @Test
-    void closedSignUpStillAllowsThePlatformAdmin() {
+    void closedSignUpRefusesEvenAdminEmails() {
         when(bootstrap.isAdminEmail("owner@college.edu")).thenReturn(true);
-        AppUser user = service(false).register("Owner", "owner@college.edu", "password1", "FACULTY", "");
-        assertEquals("SUPER_ADMIN", user.getRole());
+        AuthService auth = service(false);
+        assertThrows(IllegalArgumentException.class,
+                () -> auth.register("Owner", "owner@college.edu", "password1", "FACULTY", ""));
     }
 
     @Test

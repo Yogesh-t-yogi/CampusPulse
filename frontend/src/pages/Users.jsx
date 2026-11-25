@@ -377,6 +377,12 @@ function Users({ currentUser }) {
           <span>{secret?.temporaryPassword}</span>
           <IconButton icon={Copy} label="Copy password" onClick={copySecret} />
         </div>
+        <p className="ui-muted" style={{ marginTop: 12, fontSize: 13 }}>
+          {secret?.emailSent
+            ? "These sign-in details were also emailed to them."
+            : "Share it with them in person. Email is not set up on this server."}{" "}
+          They must choose their own password at first sign-in.
+        </p>
       </Modal>
 
       <ConfirmDialog

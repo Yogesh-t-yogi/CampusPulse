@@ -58,6 +58,8 @@ docker/        Docker helpers;  docker-compose.yml at the root
    | `LLAMA_CLOUD_API_KEY` | LlamaParse key (`llx-…`, [cloud.llamaindex.ai](https://cloud.llamaindex.ai)) for scanned PDFs (optional; without it Gemini/Groq read them) |
    | `ADMIN_EMAILS` | Emails that become platform admins (optional) |
    | `SELF_REGISTRATION` | `false` (default): HOD / college admin create accounts with the department set; only `ADMIN_EMAILS` can use the sign-up page. `true`: anyone can sign up |
+   | `DEFAULT_USER_PASSWORD` | First password for new accounts (8+ characters, must be changed at first sign-in). Empty: random one-time passwords. Also creates the `ADMIN_EMAILS` platform admin at first start |
+   | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `APP_URL` | Optional SMTP for welcome and password-reset emails; empty `MAIL_HOST` = no emails |
    | `DEMO_USERS_PASSWORD` | Set it to create the demo college and demo accounts (optional, local only) |
    | `CORS_ALLOWED_ORIGINS` | Only if the frontend runs on another address (default `http://localhost:5173`) |
    | `RATE_LIMIT_AUTH`, `RATE_LIMIT_AI` | Requests per minute per IP for sign-in and AI calls (defaults 10 / 30; 0 = off) |
