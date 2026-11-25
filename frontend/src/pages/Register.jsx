@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react";
 import { API_BASE_URL } from "../api";
 import { Alert, Button, Field } from "../ui";
 import { AuthLayout, PasswordInput } from "./auth/AuthLayout";
+import { useRegistrationOpen } from "./auth/registration";
 
 const API_URL = `${API_BASE_URL}/api/auth`;
 const ROLES = [
@@ -18,6 +19,7 @@ function Register({ onRegistered, onShowLogin }) {
   const [institutionCode, setInstitutionCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const open = useRegistrationOpen();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -51,9 +53,13 @@ function Register({ onRegistered, onShowLogin }) {
 
   return (
     <AuthLayout
-      eyebrow="Get started"
-      title="Create an account"
-      description="Most accounts are created by your college admin. Register here only if you were asked to."
+      eyebrow={open ? "Get started" : "First-time setup"}
+      title={open ? "Create an account" : "Platform admin setup"}
+      description={
+        open
+          ? "Most accounts are created by your college admin. Register here only if you were asked to."
+          : "Only for the platform admin email set on the server. Students and staff get their login from their HOD or college admin, already mapped to their department."
+      }
       footer={
         <>
           Already have an account?
@@ -65,6 +71,7 @@ function Register({ onRegistered, onShowLogin }) {
     >
       <form className="au-form" onSubmit={handleSubmit}>
         {error && <Alert tone="danger">{error}</Alert>}
+        {open && (
         <div className="ui-field">
           <span className="ui-field-label" id="register-role">I am</span>
           <div className="au-roles" role="radiogroup" aria-labelledby="register-role">
@@ -75,9 +82,12 @@ function Register({ onRegistered, onShowLogin }) {
             ))}
           </div>
         </div>
-        <Field label="College code" hint="Ask your college admin. Leave blank for the default college.">
-          <input value={institutionCode} onChange={(e) => setInstitutionCode(e.target.value)} autoComplete="organization" />
-        </Field>
+        )}
+        {open && (
+          <Field label="College code" hint="Ask your college admin. Leave blank for the default college.">
+            <input value={institutionCode} onChange={(e) => setInstitutionCode(e.target.value)} autoComplete="organization" />
+          </Field>
+        )}
         <Field label="Full name">
           <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={100} required />
         </Field>

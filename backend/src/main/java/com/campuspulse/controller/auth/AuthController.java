@@ -70,6 +70,12 @@ public class AuthController {
         return view;
     }
 
+    /** Whether anyone may sign up (false: HOD / college admin create accounts). Public. */
+    @GetMapping("/registration")
+    public Map<String, Object> registration() {
+        return Map.of("open", authService.selfRegistrationOpen());
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(
             @RequestBody Map<String, String> request) {
