@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { KeyRound, LogOut } from "lucide-react";
-import api, { errorMessage } from "../apiClient";
+import api, { errorMessage, TOKEN_KEY } from "../apiClient";
 import { Alert, Button, Field } from "../ui";
 
 // Shown after signing in with a one-time password (admin-created, imported or reset accounts).
@@ -25,7 +25,9 @@ function ChangePassword({ user, onChanged, onLogout }) {
     }
     setBusy(true);
     try {
-      await api.post("/api/auth/change-password", { currentPassword: current, newPassword: next });
+      const { data } = await api.post("/api/auth/change-password", { currentPassword: current, newPassword: next });
+      // Older logins end with the change; keep this session on the new token.
+      if (data?.token) sessionStorage.setItem(TOKEN_KEY, data.token);
       onChanged();
     } catch (err) {
       setError(errorMessage(err, "Couldn't change the password."));

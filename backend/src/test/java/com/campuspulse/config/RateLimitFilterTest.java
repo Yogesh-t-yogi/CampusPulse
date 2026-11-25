@@ -41,6 +41,9 @@ class RateLimitFilterTest {
         assertNull(RateLimitFilter.bucket("GET", "/api/matching/semantic/report/jobs/1/syllabus/2", null));
         assertNull(RateLimitFilter.bucket("GET", "/api/jobs", null));
         assertNull(RateLimitFilter.bucket("OPTIONS", "/api/auth/login", null));
+        // Password guessing and course-outcome AI extraction are limited too.
+        assertEquals("auth", RateLimitFilter.bucket("POST", "/api/auth/change-password", null));
+        assertEquals("ai", RateLimitFilter.bucket("POST", "/api/outcomes/syllabus/4/extract", null));
     }
 
     private static MockHttpServletResponse login(RateLimitFilter filter, String ip) throws Exception {

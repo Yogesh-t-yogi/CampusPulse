@@ -182,6 +182,7 @@ public class AdminUserController {
         String password = passwords.next();
         user.setPassword(passwordEncoder.encode(password));
         user.setMustChangePassword(true);
+        user.setPasswordChangedAt(java.time.LocalDateTime.now().withNano(0));
         AppUser saved = appUserRepository.save(user);
         Map<String, Object> view = view(saved);
         view.put("temporaryPassword", password);
@@ -189,20 +190,37 @@ public class AdminUserController {
         return view;
     }
 
-    /** Delete an account with its own syllabi and private jobs. Catalog jobs stay. */
+    /**
+     * Delete an account. Syllabi shared with the department / college are handed over to the person
+     * deleting the account (with their reports, CO/PO and history); only private syllabi and private jobs
+     * are deleted. Catalog jobs stay.
+     */
     @Transactional
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public Map<String, Object> deleteUser(@PathVariable Long id) {
+        AppUser actor = me();
         AppUser user = requireManageable(id);
+        int kept = 0;
         for (Syllabus syllabus : syllabusRepository.findAllByOwner_Id(id)) {
-            syllabusService.delete(syllabus.getId(), id);
+            if (isShared(syllabus)) {
+                syllabus.setOwner(actor);
+                syllabusRepository.save(syllabus);
+                kept++;
+            } else {
+                syllabusService.delete(syllabus.getId(), id);
+            }
         }
         for (JobPosting job : jobPostingRepository.findAllByOwner_Id(id)) {
             jobRequiredSkillRepository.deleteAll(jobRequiredSkillRepository.findByJobPostingId(job.getId()));
             jobPostingRepository.delete(job);
         }
         appUserRepository.delete(user);
-        return ResponseEntity.noContent().build();
+        return Map.of("deleted", id, "sharedSyllabiKept", kept);
+    }
+
+    /** Anything but PRIVATE is used by other people (department or college sharing). */
+    static boolean isShared(Syllabus syllabus) {
+        return syllabus.getVisibility() != null && !"PRIVATE".equalsIgnoreCase(syllabus.getVisibility());
     }
 
     // ---------- rules ----------

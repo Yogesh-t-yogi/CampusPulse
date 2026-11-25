@@ -58,6 +58,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .findByEmail(email)
                         .orElse(null);
 
+                // A password change or reset ends every login made before it.
+                if (user != null && !tokenStillValid(user, jwtService.extractIssuedAt(token))) {
+                    user = null;
+                }
+
                 if (user != null && user.isMustChangePassword()
                         && !request.getRequestURI().startsWith("/api/auth/")) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -90,5 +95,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** Tokens carry seconds; a token from the same second as the change still counts as new. */
+    static boolean tokenStillValid(AppUser user, java.util.Date issuedAt) {
+        if (user.getPasswordChangedAt() == null) {
+            return true;
+        }
+        if (issuedAt == null) {
+            return false;
+        }
+        long changed = user.getPasswordChangedAt().atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        return issuedAt.getTime() / 1000 >= changed;
     }
 }

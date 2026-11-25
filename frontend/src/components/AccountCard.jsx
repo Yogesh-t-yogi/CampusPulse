@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { KeyRound, Pencil, Save, X } from "lucide-react";
-import api, { errorMessage } from "../apiClient";
+import api, { errorMessage, TOKEN_KEY } from "../apiClient";
 import { Alert, Button, Card, Field } from "../ui";
 import { useToast } from "../ui/toast";
 
@@ -107,7 +107,9 @@ function AccountCard({ user, onUserChanged }) {
     if (next !== confirm) return setError("The two new passwords don't match.");
     setBusy(true);
     try {
-      await api.post("/api/auth/change-password", { currentPassword: current, newPassword: next });
+      const { data } = await api.post("/api/auth/change-password", { currentPassword: current, newPassword: next });
+      // Older logins end with the change; keep this session on the new token.
+      if (data?.token) sessionStorage.setItem(TOKEN_KEY, data.token);
       toast("Password changed.");
       close();
     } catch (err) {
