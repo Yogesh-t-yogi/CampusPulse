@@ -28,6 +28,14 @@ import java.util.Map;
 @Service
 public class OutcomeService {
 
+    private org.springframework.transaction.support.TransactionTemplate transactions;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setTransactions(org.springframework.transaction.PlatformTransactionManager manager) {
+        this.transactions = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
+
+
     /** NBA graduate attributes PO1–PO12 (titles standard; descriptions written for CampusPulse). */
     static final String[][] NBA_POS = {
             {"PO1", "Engineering knowledge", "Apply mathematics, science, engineering fundamentals and specialisation to complex problems."},
@@ -230,7 +238,8 @@ public class OutcomeService {
      * suggested CO–PO levels when the syllabus has a program with POs.
      * replace=false skips subjects that already have COs.
      */
-    @Transactional
+    // Not @Transactional: the AI call can take minutes and must not hold a database connection.
+    // Only the saving at the end runs in a (short) transaction.
     public Map<String, Object> extractCourseOutcomes(Syllabus syllabus, boolean replace) {
         List<Map<String, Object>> subjects = jdbc.queryForList(
                 "SELECT id, name, code FROM subject WHERE syllabus_id = ? ORDER BY id", syllabus.getId());
@@ -285,6 +294,13 @@ public class OutcomeService {
             throw new IllegalStateException("The AI answer could not be read. Try again.");
         }
 
+        JsonNode answer = root;
+        java.util.function.Supplier<Map<String, Object>> save = () -> saveCourseOutcomes(subjects, pos, answer, replace);
+        return transactions == null ? save.get() : transactions.execute(status -> save.get());
+    }
+
+    private Map<String, Object> saveCourseOutcomes(
+            List<Map<String, Object>> subjects, List<Map<String, Object>> pos, JsonNode root, boolean replace) {
         Map<String, Long> poIdsByCode = new HashMap<>();
         pos.forEach(po -> poIdsByCode.put(po.get("code").toString().toUpperCase(Locale.ROOT), ((Number) po.get("id")).longValue()));
 

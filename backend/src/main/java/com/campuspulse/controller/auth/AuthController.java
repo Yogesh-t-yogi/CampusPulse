@@ -41,11 +41,12 @@ public class AuthController {
     // Set a new password (required after a one-time password). Clears mustChangePassword.
     @PostMapping("/change-password")
     public Map<String, Object> changePassword(@RequestBody Map<String, String> request) {
-        authService.changePassword(
+        String token = authService.changePassword(
                 currentUserService.getCurrentUser(),
                 request.get("currentPassword"),
                 request.get("newPassword"));
-        return Map.of("message", "Password changed");
+        // Logins made before the change stop working; this one replaces the caller's token.
+        return Map.of("message", "Password changed", "token", token);
     }
 
     /** Edit my own profile: name for everyone; students also USN, department, programme, batch year. */

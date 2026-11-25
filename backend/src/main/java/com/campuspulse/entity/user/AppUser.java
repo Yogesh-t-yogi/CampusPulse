@@ -52,6 +52,10 @@ public class AppUser {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
+    // Tokens issued before this moment are refused (password changed or reset).
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
 
     public Long getInstitutionId() { return institutionId; }
     public void setInstitutionId(Long institutionId) { this.institutionId = institutionId; }
@@ -66,6 +70,8 @@ public class AppUser {
     public void setBatchYear(Integer batchYear) { this.batchYear = batchYear; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+    public LocalDateTime getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
 
     public Long getCourseSyllabusId() { return courseSyllabusId; }
     public void setCourseSyllabusId(Long courseSyllabusId) { this.courseSyllabusId = courseSyllabusId; }

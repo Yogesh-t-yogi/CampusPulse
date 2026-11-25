@@ -98,7 +98,8 @@ public class AuthService {
                 .or(() -> appUserRepository.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)));
     }
 
-    public void changePassword(AppUser user, String currentPassword, String newPassword) {
+    /** Returns a fresh login token: older tokens stop working after the change. */
+    public String changePassword(AppUser user, String currentPassword, String newPassword) {
         AppUser fresh = appUserRepository.findById(user.getId()).orElseThrow();
         if (currentPassword == null || !passwordEncoder.matches(currentPassword, fresh.getPassword())) {
             throw new IllegalArgumentException("Your current password is wrong.");
@@ -111,7 +112,9 @@ public class AuthService {
         }
         fresh.setPassword(passwordEncoder.encode(newPassword));
         fresh.setMustChangePassword(false);
+        fresh.setPasswordChangedAt(java.time.LocalDateTime.now().withNano(0));
         appUserRepository.save(fresh);
+        return jwtService.generateToken(fresh.getEmail());
     }
 
     public String login(

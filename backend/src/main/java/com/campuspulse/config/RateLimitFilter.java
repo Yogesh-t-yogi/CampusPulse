@@ -47,9 +47,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Which limit applies, or null for none. */
     static String bucket(String method, String path, String refresh) {
         if (!"POST".equals(method) && !"GET".equals(method)) return null;
-        if ("POST".equals(method) && (path.equals("/api/auth/login") || path.equals("/api/auth/register"))) return "auth";
+        if ("POST".equals(method) && (path.equals("/api/auth/login") || path.equals("/api/auth/register")
+                || path.equals("/api/auth/change-password"))) return "auth";
         if ("POST".equals(method) && (path.startsWith("/api/ai/") || path.equals("/api/syllabus/upload")
-                || path.equals("/api/jobs/custom") || path.startsWith("/api/resume"))) return "ai";
+                || path.equals("/api/jobs/custom") || path.startsWith("/api/resume")
+                || (path.startsWith("/api/outcomes/syllabus/") && path.endsWith("/extract")))) return "ai";
         if ("GET".equals(method) && "true".equals(refresh)
                 && (path.startsWith("/api/matching/") || path.startsWith("/api/recommendations/"))) return "ai";
         return null;

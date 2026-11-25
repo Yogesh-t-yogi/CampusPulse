@@ -39,6 +39,16 @@ public class JwtService {
             .compact();
     }
 
+    /** When the token was issued (null if missing). */
+    public Date extractIssuedAt(String token) {
+        return Jwts.parser()
+            .verifyWith(getSigningKey())
+            .build()
+            .parseSignedClaims(token)
+            .getPayload()
+            .getIssuedAt();
+    }
+
     public String extractEmail(String token) {
         return Jwts.parser()
             .verifyWith(getSigningKey())

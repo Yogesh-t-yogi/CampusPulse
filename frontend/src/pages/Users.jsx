@@ -399,7 +399,7 @@ function Users({ currentUser }) {
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete account?"
-        message={`${deleting?.name}'s account, syllabi and private jobs will be deleted. Catalog jobs stay. This can't be undone.`}
+        message={`${deleting?.name}'s account, private syllabi and private jobs will be deleted. Syllabi shared with the department or college are moved to you, with their reports. Catalog jobs stay. This can't be undone.`}
         busy={busy}
         onConfirm={remove}
         onClose={() => setDeleting(null)}
