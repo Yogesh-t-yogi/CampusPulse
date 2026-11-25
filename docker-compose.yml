@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # database reachable from this machine only
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -19,8 +19,9 @@ services:
 
   ai-service:
     build: ./ai-service
+    # No login on the embedding service: reachable from this machine and the backend only.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   backend:
     build: ./backend
@@ -42,6 +43,17 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       DEMO_USERS_PASSWORD: ${DEMO_USERS_PASSWORD:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      SELF_REGISTRATION: ${SELF_REGISTRATION:-false}
+      DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:-}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      LOG_FILE: /app/logs/campuspulse.log
+    volumes:
+      - ./logs:/app/logs          # rotated log files, kept on the host
     ports:
       - "8081:8081"
 

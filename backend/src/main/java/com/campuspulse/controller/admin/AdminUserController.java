@@ -124,6 +124,19 @@ public class AdminUserController {
         return view;
     }
 
+    /** Sends a test email to the signed-in admin (checks the MAIL_* settings). */
+    @PostMapping("/mail-test")
+    public Map<String, Object> mailTest() {
+        AppUser actor = me();
+        if (TenantService.rank(actor.getRole()) < TenantService.rank("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only a college or platform admin can test email.");
+        }
+        String problem = accountEmails.sendTestNow(actor.getEmail());
+        return problem == null
+                ? Map.of("sent", true, "to", actor.getEmail())
+                : Map.of("sent", false, "message", problem);
+    }
+
     // ---------- bulk onboarding (Excel / CSV) ----------
 
     @GetMapping("/import/template")

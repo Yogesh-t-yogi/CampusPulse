@@ -12,12 +12,25 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
+      # Keep the Maven download used by ./mvnw between runs (it once failed to download).
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('backend/.mvn/wrapper/maven-wrapper.properties') }}
+      # Fetch Maven itself first, retrying a flaky network up to 3 times.
+      - name: Download Maven
+        run: |
+          for attempt in 1 2 3; do
+            ./mvnw -B -q --version && exit 0
+            echo "Download failed (attempt $attempt), retrying in 15 s"; sleep 15
+          done
+          exit 1
       # Unit tests only; the context-load test needs a live database.
       - run: ./mvnw -B test -Dtest='!CampuspulseBackendApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false
 
@@ -27,8 +40,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -43,8 +56,8 @@ jobs:
       run:
         working-directory: ai-service
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip

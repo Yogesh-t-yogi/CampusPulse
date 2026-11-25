@@ -60,6 +60,7 @@ docker/        Docker helpers;  docker-compose.yml at the root
    | `SELF_REGISTRATION` | `false` (default): HOD / college admin create accounts with the department set; only `ADMIN_EMAILS` can use the sign-up page. `true`: anyone can sign up |
    | `DEFAULT_USER_PASSWORD` | First password for new accounts (8+ characters, must be changed at first sign-in). Empty: random one-time passwords. Also creates the `ADMIN_EMAILS` platform admin at first start |
    | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `APP_URL` | Optional SMTP for welcome and password-reset emails; empty `MAIL_HOST` = no emails |
+   | `LOG_FILE`, `LOG_MAX_FILE_SIZE`, `LOG_MAX_DAYS` | Rotated log file (default `logs/campuspulse.log`, 10 MB per file, 14 days) |
    | `DEMO_USERS_PASSWORD` | Set it to create the demo college and demo accounts (optional, local only) |
    | `CORS_ALLOWED_ORIGINS` | Only if the frontend runs on another address (default `http://localhost:5173`) |
    | `RATE_LIMIT_AUTH`, `RATE_LIMIT_AI` | Requests per minute per IP for sign-in and AI calls (defaults 10 / 30; 0 = off) |
@@ -161,3 +162,12 @@ Matching thresholds were calibrated on `data/eval/skill-topic-pairs.csv` (see `a
 ## License
 
 See [LICENSE](LICENSE).
+
+## Deploying
+
+- Uptime: `GET /api/health` returns 200 `UP` when the API and database answer, 503 `DOWN` otherwise
+  (use UptimeRobot, Better Stack or a cron `curl`).
+- Logs: rotated files in `logs/` (Docker: `./logs` on the host).
+- HTTPS and upload size: see `deploy/nginx-site.conf` (`client_max_body_size 12m` for 10 MB syllabus PDFs).
+- Email: fill the `MAIL_*` settings, then My account > **Send test email** (college / platform admin).
+- `docker-compose.yml` keeps the database and the embedding service on `127.0.0.1` only.
