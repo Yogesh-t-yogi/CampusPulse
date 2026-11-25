@@ -1,5 +1,7 @@
 package com.campuspulse.config;
 
+import com.campuspulse.entity.user.AppUser;
+
 import com.campuspulse.repository.user.AppUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +27,20 @@ public class AdminBootstrap implements ApplicationRunner {
     private final AppUserRepository appUserRepository;
     private final Set<String> adminEmails;
 
+    private final org.springframework.beans.factory.ObjectProvider<org.springframework.security.crypto.password.PasswordEncoder> encoder;
+    private final org.springframework.beans.factory.ObjectProvider<com.campuspulse.repository.org.InstitutionRepository> institutions;
+    private final String defaultPassword;
+
     public AdminBootstrap(
             AppUserRepository appUserRepository,
-            @Value("${app.admin-emails:}") String adminEmails) {
+            @Value("${app.admin-emails:}") String adminEmails,
+            @Value("${app.default-user-password:}") String defaultPassword,
+            org.springframework.beans.factory.ObjectProvider<org.springframework.security.crypto.password.PasswordEncoder> encoder,
+            org.springframework.beans.factory.ObjectProvider<com.campuspulse.repository.org.InstitutionRepository> institutions) {
         this.appUserRepository = appUserRepository;
+        this.defaultPassword = defaultPassword == null ? "" : defaultPassword.trim();
+        this.encoder = encoder;
+        this.institutions = institutions;
         this.adminEmails = Arrays.stream(adminEmails.split(","))
                 .map(email -> email.trim().toLowerCase(Locale.ROOT))
                 .filter(email -> !email.isBlank())
@@ -49,6 +61,27 @@ public class AdminBootstrap implements ApplicationRunner {
                     user.setRole("FACULTY");
                     appUserRepository.save(user);
                 });
+
+        // Sign-up is closed, so the platform admin account is created here (first start).
+        for (String email : adminEmails) {
+            if (appUserRepository.existsByEmail(email)) {
+                continue;
+            }
+            if (defaultPassword.length() < 8) {
+                log.warn("ADMIN_EMAILS has an email with no account. Set DEFAULT_USER_PASSWORD (8+ characters) "
+                        + "to create the platform admin account at startup.");
+                continue;
+            }
+            AppUser admin = new AppUser();
+            admin.setName("Platform admin");
+            admin.setEmail(email);
+            admin.setRole("SUPER_ADMIN");
+            admin.setPassword(encoder.getObject().encode(defaultPassword));
+            admin.setMustChangePassword(true);
+            institutions.getObject().findByCodeIgnoreCase("DEFAULT").ifPresent(college -> admin.setInstitutionId(college.getId()));
+            appUserRepository.save(admin);
+            log.info("Created the platform admin account (id {}); it must change the default password at first sign-in.", admin.getId());
+        }
 
         appUserRepository.findAll().stream()
                 .filter(user -> isAdminEmail(user.getEmail()))

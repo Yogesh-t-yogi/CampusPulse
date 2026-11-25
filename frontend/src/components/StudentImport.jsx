@@ -90,7 +90,7 @@ function StudentImport({ open, onClose, onDone }) {
       open={open}
       size="lg"
       title="Import students from Excel"
-      description="Add or update many people at once. New accounts get a one-time password."
+      description="Add or update up to 100 people at a time. New accounts get a first password they must change at sign-in (emailed when email is set up)."
       onClose={close}
       footer={
         result ? (

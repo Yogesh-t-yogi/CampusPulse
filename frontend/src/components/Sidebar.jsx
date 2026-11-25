@@ -45,6 +45,7 @@ const GROUPS = [
     title: "My growth",
     items: [
       { page: "My profile", label: "My profile", icon: UserRound },
+      { page: "My account", label: "My account", icon: UserRound },
       { page: "Learning plan", label: "Learning plan", icon: Route },
       { page: "Resume match", label: "Resume match", icon: FileUser },
     ],
