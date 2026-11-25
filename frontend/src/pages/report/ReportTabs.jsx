@@ -15,22 +15,24 @@ const STATUS = {
 const statusOf = (value) => (STATUS[String(value || "").toUpperCase()] ? String(value).toUpperCase() : "GAP");
 const pct = (n) => `${Math.round(Number(n) || 0)}%`;
 
-/** Loads one saved API result for the syllabus × job pair. */
+/** Loads one saved API result for the syllabus × job pair. A result for another pair is never shown. */
 function useSaved(path, syllabusId, jobId) {
-  const [state, setState] = useState({ data: null, error: "", loading: true });
+  const key = `${syllabusId}:${jobId}`;
+  const [state, setState] = useState({ key: null, data: null, error: "" });
   useEffect(() => {
     if (!syllabusId || !jobId) return;
     let cancelled = false;
     api
       .get(path(jobId, syllabusId))
-      .then(({ data }) => !cancelled && setState({ data, error: "", loading: false }))
-      .catch((err) => !cancelled && setState({ data: null, error: errorMessage(err, "Couldn't load this part of the report."), loading: false }));
+      .then(({ data }) => !cancelled && setState({ key, data, error: "" }))
+      .catch((err) => !cancelled && setState({ key, data: null, error: errorMessage(err, "Couldn't load this part of the report.") }));
     return () => {
       cancelled = true;
     };
-  }, [path, syllabusId, jobId]);
+  }, [path, syllabusId, jobId, key]);
   if (!syllabusId || !jobId) return { data: null, error: "Choose a syllabus and a job first.", loading: false };
-  return state;
+  if (state.key !== key) return { data: null, error: "", loading: true };
+  return { data: state.data, error: state.error, loading: false };
 }
 
 const reportPath = (jobId, syllabusId) => `/api/matching/semantic/report/jobs/${jobId}/syllabus/${syllabusId}`;

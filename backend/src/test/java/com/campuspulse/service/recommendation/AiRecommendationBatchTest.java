@@ -82,4 +82,29 @@ class AiRecommendationBatchTest {
         assertEquals("Docker", out.get(0).getSkill());
         assertEquals("HIGH", out.get(0).getPriority());
     }
+
+    @Test
+    void oneFailedBatchKeepsTheOthers() {
+        LlmService llm = mock(LlmService.class);
+        when(llm.generateJson(anyString())).thenAnswer(call -> {
+            String prompt = call.getArgument(0);
+            if (prompt.contains("Skill: Skill7")) throw new RuntimeException("timeout");
+            return answer(prompt);
+        });
+        var service = new AiRecommendationService(llm, new ObjectMapper());
+        List<SemanticSkillMatch> skills = new ArrayList<>();
+        for (int i = 1; i <= 7; i++) skills.add(new SemanticSkillMatch("Skill" + i, null, null, 0.1, "GAP"));
+        List<AiRecommendation> out = service.generateRecommendations(report(skills));
+        assertEquals(7, out.size());
+        assertEquals("Skill7", out.get(6).getSkill());          // generic advice for the failed batch
+    }
+
+    @Test
+    void allBatchesFailingIsAnError() {
+        LlmService llm = mock(LlmService.class);
+        when(llm.generateJson(anyString())).thenThrow(new RuntimeException("AI down"));
+        var service = new AiRecommendationService(llm, new ObjectMapper());
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> service.generateRecommendations(
+                report(List.of(new SemanticSkillMatch("Docker", null, null, 0.1, "GAP")))));
+    }
 }

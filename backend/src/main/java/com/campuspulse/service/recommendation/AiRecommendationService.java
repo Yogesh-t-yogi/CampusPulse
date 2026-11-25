@@ -14,6 +14,8 @@ import java.util.List;
 @Service
 public class AiRecommendationService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRecommendationService.class);
+
     private final LlmService llmService;
     private final ObjectMapper objectMapper;
 
@@ -51,15 +53,24 @@ public class AiRecommendationService {
             calls.add(java.util.concurrent.CompletableFuture.supplyAsync(
                     () -> parseRecommendations(llmService.generateJson(prompt)), POOL));
         }
+        // A failed batch keeps the others: its skills get the generic advice. Only if every batch
+        // fails is the error passed on (so nothing half-empty is saved while the AI is down).
         java.util.Map<String, AiRecommendation> fromAi = new java.util.HashMap<>();
+        RuntimeException lastError = null;
+        int failed = 0;
         for (var call : calls) {
             try {
                 call.join().forEach(item -> {
                     if (item.getSkill() != null) fromAi.putIfAbsent(key(item.getSkill()), item);
                 });
             } catch (java.util.concurrent.CompletionException e) {
-                throw e.getCause() instanceof RuntimeException runtime ? runtime : e;
+                failed++;
+                lastError = e.getCause() instanceof RuntimeException runtime ? runtime : e;
+                log.warn("Recommendation batch failed: {}", lastError.getMessage());
             }
+        }
+        if (failed > 0 && failed == calls.size()) {
+            throw lastError;
         }
 
         List<AiRecommendation> result = new java.util.ArrayList<>();

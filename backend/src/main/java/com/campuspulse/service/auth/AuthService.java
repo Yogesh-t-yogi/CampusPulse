@@ -88,7 +88,14 @@ public class AuthService {
     }
 
     public boolean mustChangePassword(String email) {
-        return appUserRepository.findByEmail(email).map(AppUser::isMustChangePassword).orElse(false);
+        return findUser(email).map(AppUser::isMustChangePassword).orElse(false);
+    }
+
+    /** Emails are stored lower-case by the HOD / admin screens; older self sign-ups may keep their case. */
+    private java.util.Optional<AppUser> findUser(String email) {
+        String trimmed = email == null ? "" : email.trim();
+        return appUserRepository.findByEmail(trimmed)
+                .or(() -> appUserRepository.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)));
     }
 
     public void changePassword(AppUser user, String currentPassword, String newPassword) {
@@ -111,8 +118,7 @@ public class AuthService {
             String email,
             String password) {
 
-        AppUser user = appUserRepository
-                .findByEmail(email)
+        AppUser user = findUser(email)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Invalid email or password"
