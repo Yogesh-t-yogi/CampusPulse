@@ -3,6 +3,7 @@ import { Plus, Save, Target, X } from "lucide-react";
 import api, { errorMessage } from "../apiClient";
 import { Badge, Button, Card, Field, Page, PageHeader, SearchInput, Skeleton } from "../ui";
 import { useToast } from "../ui/toast";
+import AccountCard from "../components/AccountCard";
 
 const SOURCE_LABEL = { RESUME: "From resume", SELF: "Added by you", LEARNED: "Learned" };
 const MAX_ROLES = 5;
@@ -106,8 +107,10 @@ function StudentProfile({ user, jobs, syllabi, onChanged }) {
       <PageHeader
         eyebrow="My growth"
         title="My profile"
-        description="The roles you want, the skills you have, and the course you're studying. Your dashboard and learning plan use these."
+        description="Your account, the roles you want, the skills you have, and the course you're studying. Your dashboard and learning plan use these."
       />
+
+      <AccountCard user={user} />
 
       <Card
         title="Target roles"
