@@ -145,4 +145,30 @@ class ScannedPdfReadingTest {
         new ScannedPageReader(llm, mock(JdbcTemplate.class), 60, 1, 100).read(twoPagePdf(), "abc", List.of(), d -> { });
         verify(llm, never()).generateFromImages(anyString(), anyList());
     }
+
+    /** PDF_AI_MODE=off: no page goes to LlamaParse or a vision model, even when both are configured. */
+    @Test
+    void aiModeOffNeverCallsLlamaParseOrVisionModels() throws Exception {
+        LlmService llm = mock(LlmService.class);
+        when(llm.generateFromImages(anyString(), anyList())).thenReturn("should not be used");
+        when(llm.status()).thenReturn(List.of(java.util.Map.of("name", "gemini", "visionModel", "gemini-v")));
+        LlamaParseClient llamaParse = mock(LlamaParseClient.class);
+        when(llamaParse.configured()).thenReturn(true);
+        ScannedPageReader reader = new ScannedPageReader(llm, llamaParse, mock(JdbcTemplate.class), 60, 1, 100) {
+            @Override
+            boolean tesseractInstalled() {
+                return false;
+            }
+        };
+        reader.setAiMode("OFF ");
+
+        assertFalse(reader.canRead(), "only Tesseract may read pages when AI is off");
+        var results = reader.read(twoPagePdf(), "abc", List.of(2), done -> { });
+        assertEquals("failed", results.get(0).method());
+        verify(llamaParse, never()).parse(org.mockito.ArgumentMatchers.any(), anyList());
+        verify(llm, never()).generateFromImages(anyString(), anyList());
+
+        reader.setAiMode("auto");
+        assertTrue(reader.canRead(), "auto mode uses the configured AI again");
+    }
 }

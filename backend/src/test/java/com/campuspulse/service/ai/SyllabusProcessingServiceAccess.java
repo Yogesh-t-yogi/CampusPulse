@@ -13,4 +13,9 @@ public final class SyllabusProcessingServiceAccess {
     public static String merge(List<String> pageTexts, List<ScannedPageReader.PageResult> results) {
         return SyllabusProcessingService.mergePages(pageTexts, results).text();
     }
+
+    /** The "how each page was read" summary saved for the status view. */
+    public static java.util.Map<String, Object> summary(List<String> pageTexts, List<ScannedPageReader.PageResult> results) {
+        return SyllabusProcessingService.mergePages(pageTexts, results).summary();
+    }
 }
