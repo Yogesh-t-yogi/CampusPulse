@@ -1,0 +1,88 @@
+# Production stack for one server (e.g. an AWS EC2 instance): docker compose -f docker-compose.prod.yml up -d --build
+# Needs a .env next to this file (see deploy/AWS-DEPLOY.md). Only Caddy is reachable from the internet
+# (ports 80/443); the database, backend and embedding service stay on the private Docker network.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campuspulse
+      POSTGRES_USER: campuspulse
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campuspulse -d campuspulse"]
+      interval: 10s
+      retries: 10
+
+  ai-service:
+    build: ./ai-service
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/campuspulse
+      SPRING_DATASOURCE_USERNAME: campuspulse
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EMBEDDING_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLAMA_CLOUD_API_KEY: ${LLAMA_CLOUD_API_KEY:-}
+      LLM_ORDER: ${LLM_ORDER:-gemini,groq}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:?Set ADMIN_EMAILS in .env}
+      DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:-}
+      SELF_REGISTRATION: "false"
+      DEMO_USERS_PASSWORD: ""
+      CORS_ALLOWED_ORIGINS: ${APP_URL:?Set APP_URL in .env}
+      APP_URL: ${APP_URL}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      LOG_FILE: /app/logs/campuspulse.log
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms256m -Xmx1g}
+    volumes:
+      - ./logs:/app/logs
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # "/" = call the API on the same address as the site (Caddy sends /api to the backend).
+        VITE_API_BASE_URL: /
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Your domain (HTTPS certificate is issued automatically), or ":80" to use the server IP over HTTP.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,33 @@
+# Caddy: public entry point. With a domain in SITE_ADDRESS it gets and renews a free HTTPS
+# certificate (Let's Encrypt) by itself. With ":80" it serves plain HTTP on the server's IP.
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# Syllabus PDFs up to 10 MB (backend limit 11 MB per request).
+	request_body {
+		max_size 12MB
+	}
+
+	# API -> Spring Boot. AI work (syllabus reading, recommendations) can take minutes.
+	handle /api/* {
+		reverse_proxy backend:8081 {
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
+	}
+
+	# Everything else -> the React app.
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

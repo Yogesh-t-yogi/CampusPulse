@@ -165,6 +165,9 @@ See [LICENSE](LICENSE).
 
 ## Deploying
 
+- **AWS (one EC2 server, HTTPS):** step-by-step guide in `deploy/AWS-DEPLOY.md`, using
+  `docker-compose.prod.yml` (Caddy, frontend, backend, embedding service, PostgreSQL + pgvector).
+
 - Uptime: `GET /api/health` returns 200 `UP` when the API and database answer, 503 `DOWN` otherwise
   (use UptimeRobot, Better Stack or a cron `curl`).
 - Logs: rotated files in `logs/` (Docker: `./logs` on the host).

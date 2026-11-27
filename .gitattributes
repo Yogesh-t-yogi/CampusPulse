@@ -1,0 +1,4 @@
+# Shell scripts and server config must keep Linux line endings
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+mvnw text eol=lf
