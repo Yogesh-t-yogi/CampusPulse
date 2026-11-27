@@ -47,24 +47,43 @@ public class AccountEmailService {
         return mailSender != null && mailSender.getIfAvailable() != null;
     }
 
-    /** New account. Returns true if the mail was queued. */
+    /** New account, with the college name and the role in plain words. Returns true if the mail was queued. */
     public boolean sendWelcome(String to, String name, String role, String college, String password) {
+        boolean hasCollege = college != null && !college.isBlank();
         String body = """
                 Hello %s,
 
-                A CampusPulse account has been created for you%s.
+                %s has created a CampusPulse account for you.
+
+                College: %s
+                Role: %s
 
                 Sign in at: %s
                 Email: %s
                 One-time password: %s
-                Role: %s
 
                 You will be asked to choose your own password when you first sign in.
                 If you did not expect this email, please tell your college admin.
 
                 CampusPulse
-                """.formatted(name, college == null ? "" : " at " + college, appUrl, to, password, role);
-        return send(to, "Your CampusPulse account", body);
+                """.formatted(name,
+                hasCollege ? college : "Your college",
+                hasCollege ? college : "-",
+                roleLabel(role), appUrl, to, password);
+        String subject = hasCollege ? "Your CampusPulse account at " + college : "Your CampusPulse account";
+        return send(to, subject, body);
+    }
+
+    static String roleLabel(String role) {
+        if (role == null) return "CampusPulse user";
+        return switch (role) {
+            case "SUPER_ADMIN" -> "Platform admin";
+            case "ADMIN" -> "College admin";
+            case "HOD" -> "Head of department";
+            case "FACULTY" -> "Faculty";
+            case "STUDENT" -> "Student";
+            default -> role;
+        };
     }
 
     /** Password reset by a HOD / college admin. */
