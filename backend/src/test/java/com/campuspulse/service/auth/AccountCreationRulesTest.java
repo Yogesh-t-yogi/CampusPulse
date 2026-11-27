@@ -45,5 +45,6 @@ class AccountCreationRulesTest {
         assertFalse(mail.enabled());
         assertFalse(mail.sendWelcome("asha@example.edu", "Asha Rao", "Student", null, "Welcome@2026"));
         verifyNoInteractions(provider);
+        assertTrue(mail.sendTestNow("admin@example.edu").startsWith("Email is not set up"));
     }
 }

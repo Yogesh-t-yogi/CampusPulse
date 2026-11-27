@@ -27,12 +27,36 @@ public class HealthController {
         this.llmService = llmService;
     }
 
+    /**
+     * Uptime check (public): 200 + "UP" when the API and the database answer, 503 + "DOWN" otherwise.
+     * Point UptimeRobot / Better Stack / a cron curl at it. No configuration or data is exposed.
+     */
     @GetMapping("/api/health")
-    public Map<String, String> health() {
-        return Map.of(
-                "status", "UP",
-                "application", "CampusPulse"
-        );
+    public org.springframework.http.ResponseEntity<Map<String, String>> health() {
+        boolean database;
+        try {
+            database = jdbc == null || Integer.valueOf(1).equals(jdbc.queryForObject("SELECT 1", Integer.class));
+        } catch (RuntimeException e) {
+            database = false;
+        }
+        Map<String, String> body = Map.of(
+                "status", database ? "UP" : "DOWN",
+                "application", "CampusPulse",
+                "database", database ? "UP" : "DOWN");
+        return org.springframework.http.ResponseEntity.status(database ? 200 : 503).body(body);
+    }
+
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private com.campuspulse.service.mail.AccountEmailService accountEmails;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setJdbc(org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAccountEmails(com.campuspulse.service.mail.AccountEmailService accountEmails) {
+        this.accountEmails = accountEmails;
     }
 
     // Used by the sidebar status light (logged-in users only).
@@ -64,6 +88,7 @@ public class HealthController {
         return Map.of(
                 "embeddingService", embeddingUp,
                 "llmConfigured", llmConfigured,
+                "emailConfigured", accountEmails != null && accountEmails.enabled(),
                 "ready", embeddingUp && llmConfigured
         );
     }

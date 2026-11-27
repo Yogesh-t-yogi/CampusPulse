@@ -86,6 +86,31 @@ public class AccountEmailService {
         return send(to, "Your CampusPulse password was reset", body);
     }
 
+    /**
+     * Sends a test email now (not in the background) so the result can be shown.
+     * Returns null on success, otherwise the reason.
+     */
+    public String sendTestNow(String to) {
+        JavaMailSender mail = mailSender == null ? null : mailSender.getIfAvailable();
+        if (mail == null) {
+            return "Email is not set up: set MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD and MAIL_FROM, then restart.";
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        if (!from.isEmpty()) {
+            message.setFrom(from);
+        }
+        message.setTo(to);
+        message.setSubject("CampusPulse test email");
+        message.setText("Email from CampusPulse works. New accounts and password resets will be emailed.\n\n" + appUrl);
+        try {
+            mail.send(message);
+            return null;
+        } catch (RuntimeException e) {
+            log.warn("Test email failed: {}", e.getMessage());
+            return "The mail server refused: " + e.getMessage();
+        }
+    }
+
     boolean send(String to, String subject, String body) {
         JavaMailSender mail = mailSender == null ? null : mailSender.getIfAvailable();
         if (mail == null || to == null || to.isBlank()) {

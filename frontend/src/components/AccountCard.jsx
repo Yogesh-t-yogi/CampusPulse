@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Pencil, Save, X } from "lucide-react";
+import { KeyRound, Mail, Pencil, Save, X } from "lucide-react";
 import api, { errorMessage, TOKEN_KEY } from "../apiClient";
 import { Alert, Button, Card, Field } from "../ui";
 import { useToast } from "../ui/toast";
@@ -74,6 +74,19 @@ function AccountCard({ user, onUserChanged }) {
     await loadPrograms(user?.department?.id);
   };
 
+  const canTestMail = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const testMail = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/api/admin/users/mail-test");
+      toast(data.sent ? `Test email sent to ${data.to}.` : data.message, data.sent ? undefined : "danger");
+    } catch (err) {
+      toast(errorMessage(err, "Couldn't send the test email."), "danger");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const set = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
 
   const changeDepartment = (event) => {
@@ -136,6 +149,11 @@ function AccountCard({ user, onUserChanged }) {
             <Button icon={KeyRound} onClick={() => setMode("password")}>
               Change password
             </Button>
+            {canTestMail && (
+              <Button icon={Mail} onClick={testMail} disabled={busy}>
+                Send test email
+              </Button>
+            )}
           </div>
         )
       }
