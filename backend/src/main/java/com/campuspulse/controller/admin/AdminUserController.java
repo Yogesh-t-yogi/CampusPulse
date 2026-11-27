@@ -120,7 +120,7 @@ public class AdminUserController {
         AppUser saved = appUserRepository.save(user);
         Map<String, Object> view = view(saved);
         view.put("temporaryPassword", password);
-        view.put("emailSent", accountEmails.sendWelcome(saved.getEmail(), saved.getName(), saved.getRole(), null, password));
+        view.put("emailSent", accountEmails.sendWelcome(saved.getEmail(), saved.getName(), saved.getRole(), collegeName(saved.getInstitutionId()), password));
         return view;
     }
 
@@ -152,9 +152,12 @@ public class AdminUserController {
             @RequestParam(value = "apply", defaultValue = "false") boolean apply) throws java.io.IOException {
         StudentImportService.ImportResult result = studentImportService.importFile(file, me(), apply);
         if (result.applied()) {
+            String college = collegeName(tenantService.actingInstitutionId(me()));
             result.rows().stream()
                     .filter(row -> row.temporaryPassword() != null)
-                    .forEach(row -> accountEmails.sendWelcome(row.email(), row.name(), "CampusPulse user", null, row.temporaryPassword()));
+                    .forEach(row -> accountEmails.sendWelcome(row.email(), row.name(),
+                            appUserRepository.findByEmail(row.email()).map(AppUser::getRole).orElse(null),
+                            college, row.temporaryPassword()));
         }
         return result;
     }
@@ -229,6 +232,21 @@ public class AdminUserController {
         }
         appUserRepository.delete(user);
         return Map.of("deleted", id, "sharedSyllabiKept", kept);
+    }
+
+    /** College name for emails (null if unknown). */
+    private String collegeName(Long institutionId) {
+        if (institutionId == null || institutionRepository == null) {
+            return null;
+        }
+        return institutionRepository.findById(institutionId).map(i -> i.getName()).orElse(null);
+    }
+
+    private com.campuspulse.repository.org.InstitutionRepository institutionRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setInstitutionRepository(com.campuspulse.repository.org.InstitutionRepository institutionRepository) {
+        this.institutionRepository = institutionRepository;
     }
 
     /** Anything but PRIVATE is used by other people (department or college sharing). */
